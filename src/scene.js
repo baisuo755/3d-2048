@@ -14,23 +14,23 @@ export function createScene(container) {
   container.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
-  const fogColor = new THREE.Color(0xcce0ea);
-  scene.fog = new THREE.FogExp2(fogColor, 0.0085);
+  const fogColor = new THREE.Color(0xaed4ec);
+  scene.fog = new THREE.FogExp2(fogColor, 0.0065);
 
   const camera = new THREE.PerspectiveCamera(44, 1, 0.1, 320);
 
   const controls = new OrbitControls(camera, renderer.domElement);
-  controls.target.set(0, 0.55, 0);
+  controls.target.set(0, 0.25, 0);
   controls.enableDamping = true;
   controls.dampingFactor = 0.08;
   controls.enablePan = false;
   controls.minDistance = 6.2;
-  controls.maxDistance = 24;
+  controls.maxDistance = 28;
   controls.minPolarAngle = 0.22;
   controls.maxPolarAngle = 1.38;
 
-  // Warm sunlit botanical lighting: cool sky + warm moss bounce + crisp sun.
-  const hemi = new THREE.HemisphereLight(0xdaf0ff, 0x6b7c54, 0.78);
+  // Warm sunlit botanical lighting: crisp sky + warm meadow bounce + golden sun.
+  const hemi = new THREE.HemisphereLight(0xdff2ff, 0x8ca684, 0.86);
   scene.add(hemi);
 
   const sun = new THREE.DirectionalLight(0xfff1d4, 2.45);
@@ -48,24 +48,27 @@ export function createScene(container) {
   sun.shadow.normalBias = 0.025;
   scene.add(sun, sun.target);
 
-  // Cool sky rim light from opposite angle to give canopies crisp low-poly separation.
-  const rim = new THREE.DirectionalLight(0xa4d0f5, 0.5);
+  // Cool sky rim light + soft sky under-fill so floating island cliffs stay sculpted.
+  const rim = new THREE.DirectionalLight(0xa4d0f5, 0.52);
   rim.position.set(-9, 7, -8);
   scene.add(rim);
 
-  // Gradient sunlit sky dome (procedural shader, no external textures).
-  // Horizon is shifted slightly downward so a 3/4 top-down camera still frames
-  // warm sunlit mist and airy blue sky around the floating island.
+  const underFill = new THREE.DirectionalLight(0x9ec9e8, 0.55);
+  underFill.position.set(4, -10, 8);
+  scene.add(underFill);
+
+  // Gradient sunlit azure sky dome: cool airy blue behind the island so the
+  // golden World Tree and fireflies pop cleanly without washing into the horizon.
   const skyGeo = new THREE.SphereGeometry(220, 32, 18);
   const skyMat = new THREE.ShaderMaterial({
     side: THREE.BackSide,
     depthWrite: false,
     fog: false,
     uniforms: {
-      uZenith: { value: new THREE.Color(0x4a8bc2) },
-      uMid: { value: new THREE.Color(0x9bd0e8) },
-      uHorizon: { value: new THREE.Color(0xf4ecdb) },
-      uBottom: { value: new THREE.Color(0x8bb9d4) },
+      uZenith: { value: new THREE.Color(0x2d6da8) },
+      uMid: { value: new THREE.Color(0x6db0dc) },
+      uHorizon: { value: new THREE.Color(0xc2e1f4) },
+      uBottom: { value: new THREE.Color(0x6a9cc0) },
     },
     vertexShader: `
       varying vec3 vPos;
@@ -83,12 +86,12 @@ export function createScene(container) {
       void main() {
         float h = normalize(vPos).y;
         vec3 col;
-        if (h > -0.18) {
-          float up = clamp((h + 0.18) / 1.18, 0.0, 1.0);
-          vec3 low = mix(uHorizon, uMid, smoothstep(0.0, 0.34, up));
+        if (h > -0.16) {
+          float up = clamp((h + 0.16) / 1.16, 0.0, 1.0);
+          vec3 low = mix(uHorizon, uMid, smoothstep(0.0, 0.36, up));
           col = mix(low, uZenith, pow(up, 0.72));
         } else {
-          float dn = clamp((-h - 0.18) / 0.62, 0.0, 1.0);
+          float dn = clamp((-h - 0.16) / 0.64, 0.0, 1.0);
           col = mix(uHorizon, uBottom, smoothstep(0.0, 1.0, dn));
         }
         gl_FragColor = vec4(col, 1.0);
@@ -98,32 +101,35 @@ export function createScene(container) {
   const sky = new THREE.Mesh(skyGeo, skyMat);
   scene.add(sky);
 
-  // Subtle distant low-poly clouds drifting lazily around the sky.
+  // Distant low-poly clouds positioned on the flanks (never clipped dead-center
+  // at the top edge or colliding with the mobile HUD), with warm underside bounce.
   const cloudGroup = new THREE.Group();
   const cloudMat = new THREE.MeshStandardMaterial({
-    color: 0xfffaf0,
-    roughness: 0.95,
+    color: 0xffffff,
+    emissive: 0xdceeff,
+    emissiveIntensity: 0.24,
+    roughness: 0.92,
     metalness: 0.0,
     flatShading: true,
     transparent: true,
-    opacity: 0.85,
+    opacity: 0.86,
   });
   const cloudPuffGeo = new THREE.IcosahedronGeometry(1, 1);
   const clouds = [];
   const cloudSpecs = [
-    { angle: 0.4, radius: 34, y: 1.5, scale: 2.6, speed: 0.012 },
-    { angle: 1.5, radius: 40, y: 3.5, scale: 3.2, speed: 0.009 },
-    { angle: 2.8, radius: 36, y: -1.5, scale: 2.7, speed: 0.014 },
-    { angle: 4.0, radius: 42, y: 2.0, scale: 3.4, speed: 0.008 },
-    { angle: 5.2, radius: 35, y: -2.2, scale: 2.5, speed: 0.011 },
+    { angle: 0.35, radius: 46, y: 1.8, scale: 2.3, speed: 0.009 },
+    { angle: 1.55, radius: 52, y: 2.6, scale: 2.7, speed: 0.007 },
+    { angle: 2.75, radius: 48, y: -2.6, scale: 2.4, speed: 0.01 },
+    { angle: 4.55, radius: 52, y: -2.4, scale: 2.5, speed: 0.006 },
+    { angle: 5.35, radius: 46, y: -1.8, scale: 2.2, speed: 0.008 },
   ];
   for (const spec of cloudSpecs) {
     const cluster = new THREE.Group();
     const offsets = [
-      [0, 0, 0, 1.0, 0.55, 0.8],
-      [-0.95, -0.1, 0.2, 0.72, 0.44, 0.65],
-      [0.95, -0.08, -0.15, 0.78, 0.46, 0.68],
-      [0.2, 0.28, 0.1, 0.62, 0.42, 0.6],
+      [0, 0, 0, 1.0, 0.52, 0.78],
+      [-0.95, -0.08, 0.2, 0.72, 0.42, 0.65],
+      [0.95, -0.06, -0.15, 0.78, 0.44, 0.68],
+      [0.2, 0.25, 0.1, 0.62, 0.38, 0.6],
     ];
     for (const [ox, oy, oz, sx, sy, sz] of offsets) {
       const puff = new THREE.Mesh(cloudPuffGeo, cloudMat);
@@ -143,7 +149,7 @@ export function createScene(container) {
   }
   scene.add(cloudGroup);
 
-  const defaultTarget = new THREE.Vector3(0, 0.25, 0);
+  const defaultTarget = new THREE.Vector3(0, 0.2, 0);
   let lastAspect = 1;
 
   function frameDefault(force = false) {
@@ -151,9 +157,9 @@ export function createScene(container) {
     const h = Math.max(container.clientHeight, 1);
     const aspect = w / h;
     lastAspect = aspect;
-    // Pull back gracefully on narrow portrait viewports (e.g. 390px mobile)
-    // so the whole 4x4 floating island fits with generous sky margin.
-    const portraitScale = aspect < 1 ? Math.min(1.88, 1.06 / Math.max(aspect, 0.44)) : 1.0;
+    // Pull back on narrow portrait viewports (e.g. 390x844) so all 8 corners
+    // of the floating island sit inside the frame with generous sky margin.
+    const portraitScale = aspect < 1 ? Math.min(2.26, 1.24 / Math.max(aspect, 0.44)) : 1.0;
     const baseX = 8.2;
     const baseY = 6.9;
     const baseZ = 9.9;

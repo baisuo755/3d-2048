@@ -191,14 +191,15 @@ try {
   const shotGameplay1440 = path.join(SHOT_DIR, 'gameplay-1440.png');
   await page.screenshot({ path: shotGameplay1440 });
 
-  // Showcase all 11 tree tiers on the island at 1440 for visual inspection.
+  // Showcase all 11 tree tiers on the island at 1440 (tallest in back, shortest in front)
+  // so every single tier's silhouette and hue is clearly unobstructed.
   await page.evaluate(() => {
     window.__game.setGrid(
       [
-        [2, 4, 8, 16],
-        [32, 64, 128, 256],
-        [512, 1024, 2048, 0],
-        [2, 8, 64, 0],
+        [2048, 1024, 512, 256],
+        [128, 64, 32, 0],
+        [16, 8, 4, 2],
+        [0, 0, 0, 0],
       ],
       { score: 14820, turns: 120, hasWon: true, state: 'continue' }
     );
@@ -310,14 +311,15 @@ try {
   await mPage.click('.dpad [data-dir="down"]');
   await mPage.waitForTimeout(180);
 
-  // Set a rich mid-game board so the 390 screenshot shows clear tree variety & island framing.
+  // Set a rich mid-game board (tallest in back, shortest in front) so the 390 screenshot
+  // shows clear tree variety & unobstructed island framing.
   await mPage.evaluate(() => {
     window.__game.setGrid(
       [
-        [2, 4, 8, 16],
-        [32, 64, 128, 0],
-        [256, 512, 1024, 0],
-        [2, 0, 2048, 0],
+        [2048, 1024, 512, 256],
+        [128, 64, 32, 0],
+        [16, 8, 4, 2],
+        [0, 0, 0, 0],
       ],
       { score: 9460, turns: 88, hasWon: true, state: 'continue' }
     );

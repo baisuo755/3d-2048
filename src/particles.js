@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 
 const LEAF_GEO = new THREE.OctahedronGeometry(0.085, 0);
-const FIREFLY_GEO = new THREE.IcosahedronGeometry(0.052, 0);
+const FIREFLY_GEO = new THREE.IcosahedronGeometry(0.072, 0);
 
 export function createParticles(scene) {
   const leafGroup = new THREE.Group();
@@ -20,9 +20,9 @@ export function createParticles(scene) {
   let reducedMotion = false;
 
   const fireflyMat = new THREE.MeshBasicMaterial({
-    color: 0xffe985,
+    color: 0xffd147,
     transparent: true,
-    opacity: 0.92,
+    opacity: 0.96,
   });
 
   function clear() {

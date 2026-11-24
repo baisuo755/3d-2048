@@ -57,13 +57,13 @@ export function createBoard(scene, particles) {
     new THREE.MeshStandardMaterial({ color: 0x52893d, roughness: 0.92, flatShading: true })
   );
   const earthUpperMat = trackMat(
-    new THREE.MeshStandardMaterial({ color: 0x87674c, roughness: 0.94, flatShading: true })
+    new THREE.MeshStandardMaterial({ color: 0x9c7b5c, roughness: 0.92, flatShading: true })
   );
   const earthLowerMat = trackMat(
-    new THREE.MeshStandardMaterial({ color: 0x675346, roughness: 0.95, flatShading: true })
+    new THREE.MeshStandardMaterial({ color: 0x806a58, roughness: 0.93, flatShading: true })
   );
   const rockDeepMat = trackMat(
-    new THREE.MeshStandardMaterial({ color: 0x50453f, roughness: 0.96, flatShading: true })
+    new THREE.MeshStandardMaterial({ color: 0x6a5b52, roughness: 0.94, flatShading: true })
   );
 
   // Main grassy island deck (octagonal faceted cylinder rotated 22.5deg so flat edges align with 4x4 grid).
@@ -108,10 +108,10 @@ export function createBoard(scene, particles) {
   const shardGeo = trackGeo(new THREE.DodecahedronGeometry(0.42, 0));
   const shards = [];
   const shardSpecs = [
-    { x: -3.5, y: -2.2, z: 2.3, s: 0.9, phase: 0.2 },
-    { x: 3.7, y: -1.9, z: -2.0, s: 0.78, phase: 1.8 },
-    { x: -2.2, y: -3.4, z: -2.8, s: 0.62, phase: 3.1 },
-    { x: 2.1, y: -3.1, z: 2.9, s: 0.7, phase: 4.7 },
+    { x: -3.6, y: -1.9, z: 2.2, s: 0.85, phase: 0.2 },
+    { x: 3.8, y: -1.6, z: -2.0, s: 0.76, phase: 1.8 },
+    { x: -2.5, y: -2.5, z: -2.7, s: 0.62, phase: 3.1 },
+    { x: 2.9, y: -2.2, z: 2.4, s: 0.68, phase: 4.7 },
   ];
   for (const sp of shardSpecs) {
     const m = new THREE.Mesh(shardGeo, sp.s > 0.75 ? earthLowerMat : rockDeepMat);

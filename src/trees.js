@@ -110,55 +110,55 @@ function buildYoungTree(root, canopy) {
   addMesh(canopy, GEO.dodeca, leafTop, [0.07, 1.02, -0.04], [0, 0.2, 0], [0.22, 0.2, 0.22]);
 }
 
-// Tier 5 (32) — Mature Tree: two-blob canopy.
+// Tier 5 (32) — Mature Tree: distinct two-blob twin-crown canopy in warm forest green.
 function buildMatureTree(root, canopy) {
-  const bark = mat(0x785133, { roughness: 0.91 });
-  const leafDeep = mat(0x2d9448, { roughness: 0.8 });
-  const leafMid = mat(0x3ba954, { roughness: 0.78 });
+  const bark = mat(0x7c5334, { roughness: 0.91 });
+  const leafDeep = mat(0x339e44, { roughness: 0.78 });
+  const leafMid = mat(0x4cbf52, { roughness: 0.76 });
 
-  addMesh(root, GEO.cyl6, bark, [0, 0.42, 0], [0, 0, 0], [0.125, 0.84, 0.125]);
-  addMesh(root, GEO.cyl5, bark, [-0.1, 0.76, 0.04], [0.1, 0, 0.48], [0.06, 0.34, 0.06]);
-  // Distinct two-blob canopy
-  addMesh(canopy, GEO.ico1, leafDeep, [-0.18, 0.92, 0.06], [0, 0.3, 0], [0.36, 0.31, 0.34]);
-  addMesh(canopy, GEO.ico1, leafMid, [0.15, 1.13, -0.05], [0.2, 0.8, 0], [0.34, 0.32, 0.33]);
+  addMesh(root, GEO.cyl6, bark, [0, 0.40, 0], [0, 0, 0], [0.12, 0.80, 0.12]);
+  addMesh(root, GEO.cyl5, bark, [-0.14, 0.72, 0.04], [0.1, 0, 0.56], [0.055, 0.36, 0.055]);
+  // Wide twin-blob canopy with unmistakable silhouette split
+  addMesh(canopy, GEO.ico1, leafDeep, [-0.24, 0.88, 0.08], [0, 0.3, 0], [0.34, 0.29, 0.32]);
+  addMesh(canopy, GEO.ico1, leafMid, [0.18, 1.12, -0.06], [0.2, 0.8, 0], [0.33, 0.31, 0.32]);
 }
 
-// Tier 6 (64) — Great Tree: broad trunk, three-blob canopy.
+// Tier 6 (64) — Great Tree: broad trunk, three-blob deep-pine clover canopy.
 function buildGreatTree(root, canopy) {
   const bark = mat(0x69452a, { roughness: 0.92 });
-  const leafA = mat(0x217e54, { roughness: 0.8 });
-  const leafB = mat(0x2d9162, { roughness: 0.78 });
-  const leafC = mat(0x38a36c, { roughness: 0.78 });
+  const leafA = mat(0x1b7a4c, { roughness: 0.8 });
+  const leafB = mat(0x238d58, { roughness: 0.78 });
+  const leafC = mat(0x2fa164, { roughness: 0.78 });
 
   // Broad buttressed trunk
-  addMesh(root, GEO.cyl6, bark, [0, 0.12, 0], [0, 0.2, 0], [0.22, 0.25, 0.22]);
-  addMesh(root, GEO.cyl6, bark, [0, 0.48, 0], [0, 0, 0], [0.155, 0.88, 0.155]);
+  addMesh(root, GEO.cyl6, bark, [0, 0.12, 0], [0, 0.2, 0], [0.23, 0.26, 0.23]);
+  addMesh(root, GEO.cyl6, bark, [0, 0.48, 0], [0, 0, 0], [0.16, 0.88, 0.16]);
   // Three-blob clover canopy
-  addMesh(canopy, GEO.ico1, leafA, [-0.25, 1.02, 0.15], [0, 0.2, 0], [0.34, 0.29, 0.32]);
-  addMesh(canopy, GEO.ico1, leafB, [0.24, 1.06, 0.1], [0.1, 1.1, 0], [0.33, 0.30, 0.32]);
-  addMesh(canopy, GEO.ico1, leafC, [0.0, 1.28, -0.14], [0, 0.6, 0.1], [0.36, 0.33, 0.35]);
+  addMesh(canopy, GEO.ico1, leafA, [-0.28, 1.00, 0.16], [0, 0.2, 0], [0.35, 0.29, 0.33]);
+  addMesh(canopy, GEO.ico1, leafB, [0.27, 1.04, 0.12], [0.1, 1.1, 0], [0.34, 0.30, 0.33]);
+  addMesh(canopy, GEO.ico1, leafC, [0.0, 1.32, -0.16], [0, 0.6, 0.1], [0.37, 0.34, 0.36]);
 }
 
-// Tier 7 (128) — Grand Tree: layered canopy, visible branches.
+// Tier 7 (128) — Grand Tree: tall open visible branches, flat layered aqua-jade umbrella canopy.
 function buildGrandTree(root, canopy) {
-  const bark = mat(0x5e3d26, { roughness: 0.92 });
-  const leafLow = mat(0x267e61, { roughness: 0.8 });
-  const leafMid = mat(0x379972, { roughness: 0.78 });
-  const leafHigh = mat(0x63b574, { roughness: 0.76 });
+  const bark = mat(0x5d3d26, { roughness: 0.92 });
+  const leafLow = mat(0x1f7b82, { roughness: 0.78 });
+  const leafMid = mat(0x369ea1, { roughness: 0.76 });
+  const leafHigh = mat(0x67c7be, { roughness: 0.74 });
 
-  // Tall sculpted trunk
-  addMesh(root, GEO.cyl7, bark, [0, 0.14, 0], [0, 0, 0], [0.24, 0.28, 0.24]);
-  addMesh(root, GEO.cyl6, bark, [0, 0.62, 0], [0, 0.2, 0], [0.155, 1.15, 0.155]);
-  // Visible angled branches
-  addMesh(root, GEO.cyl5, bark, [-0.2, 0.82, 0.08], [0.15, 0, 0.68], [0.065, 0.48, 0.065]);
-  addMesh(root, GEO.cyl5, bark, [0.21, 0.88, -0.06], [-0.15, 0, -0.64], [0.065, 0.48, 0.065]);
-  addMesh(root, GEO.cyl5, bark, [0.02, 0.94, 0.18], [0.62, 0, -0.08], [0.055, 0.42, 0.055]);
+  // Tall sculpted trunk with higher canopy clearance so branches read clearly
+  addMesh(root, GEO.cyl7, bark, [0, 0.15, 0], [0, 0, 0], [0.24, 0.30, 0.24]);
+  addMesh(root, GEO.cyl6, bark, [0, 0.68, 0], [0, 0.2, 0], [0.155, 1.24, 0.155]);
+  // Prominent open angled branches
+  addMesh(root, GEO.cyl5, bark, [-0.24, 0.98, 0.10], [0.16, 0, 0.78], [0.068, 0.56, 0.068]);
+  addMesh(root, GEO.cyl5, bark, [0.25, 1.04, -0.08], [-0.16, 0, -0.74], [0.068, 0.56, 0.068]);
+  addMesh(root, GEO.cyl5, bark, [0.02, 1.06, 0.22], [0.72, 0, -0.08], [0.06, 0.48, 0.06]);
 
-  // Layered canopy tiers
-  addMesh(canopy, GEO.dodeca, leafLow, [-0.28, 1.04, 0.12], [0, 0.4, 0], [0.34, 0.22, 0.32]);
-  addMesh(canopy, GEO.dodeca, leafLow, [0.28, 1.10, -0.08], [0, 1.0, 0], [0.34, 0.22, 0.32]);
-  addMesh(canopy, GEO.ico1, leafMid, [0.0, 1.32, 0.06], [0, 0.2, 0], [0.46, 0.28, 0.44]);
-  addMesh(canopy, GEO.dodeca, leafHigh, [0.02, 1.60, -0.02], [0.1, 0.7, 0], [0.30, 0.22, 0.29]);
+  // Distinct flat-layered pagoda/umbrella canopy pads in cool aqua-jade
+  addMesh(canopy, GEO.dodeca, leafLow, [-0.36, 1.24, 0.16], [0, 0.4, 0], [0.36, 0.17, 0.34]);
+  addMesh(canopy, GEO.dodeca, leafLow, [0.36, 1.30, -0.12], [0, 1.0, 0], [0.36, 0.17, 0.34]);
+  addMesh(canopy, GEO.ico1, leafMid, [0.0, 1.52, 0.06], [0, 0.2, 0], [0.52, 0.20, 0.48]);
+  addMesh(canopy, GEO.dodeca, leafHigh, [0.02, 1.80, -0.02], [0.1, 0.7, 0], [0.34, 0.17, 0.32]);
 }
 
 // Tier 8 (256) — Elder Tree: gnarled trunk, wide layered canopy (warm olive-gold shift).
@@ -235,32 +235,32 @@ function buildGiantSequoia(root, canopy) {
   addMesh(canopy, GEO.cone6, amberLeaf, [0, 2.60, 0], [0, 1.4, 0], [0.30, 0.44, 0.30]);
 }
 
-// Tier 11 (2048) — World Tree: luminous ivory-gold trunk, glowing canopy + fireflies.
+// Tier 11 (2048) — World Tree: luminous golden-ivory trunk, rich glowing honey-gold canopy + fireflies.
 function buildWorldTree(root, canopy, isMythic = false) {
-  const trunkMat = mat(0xd8bc8f, {
+  const trunkMat = mat(0xd4b27d, {
     roughness: 0.74,
-    emissive: 0x3b2a10,
-    emissiveIntensity: 0.22,
+    emissive: 0x3b2608,
+    emissiveIntensity: 0.24,
   });
-  const veinMat = mat(0xffe082, {
-    roughness: 0.45,
-    emissive: 0xffb833,
-    emissiveIntensity: 0.55,
-  });
-  const glowGold = mat(0xffe58a, {
-    roughness: 0.55,
-    emissive: 0xffb732,
-    emissiveIntensity: 0.42,
-  });
-  const glowMint = mat(isMythic ? 0xd2b3ff : 0x8ef0c0, {
-    roughness: 0.55,
-    emissive: isMythic ? 0x9b6eff : 0x3bd694,
-    emissiveIntensity: 0.36,
-  });
-  const glowCore = mat(0xfff5c4, {
-    roughness: 0.4,
-    emissive: 0xffd25a,
+  const veinMat = mat(0xffc947, {
+    roughness: 0.42,
+    emissive: 0xffa01a,
     emissiveIntensity: 0.65,
+  });
+  const glowGold = mat(0xffcc47, {
+    roughness: 0.56,
+    emissive: 0xe89214,
+    emissiveIntensity: 0.38,
+  });
+  const glowMint = mat(isMythic ? 0xc29eff : 0x5fe3a8, {
+    roughness: 0.56,
+    emissive: isMythic ? 0x8d5eff : 0x26ba7a,
+    emissiveIntensity: 0.34,
+  });
+  const glowCore = mat(0xffe074, {
+    roughness: 0.44,
+    emissive: 0xffb224,
+    emissiveIntensity: 0.52,
   });
 
   // Sculpted glowing roots & tall sacred trunk

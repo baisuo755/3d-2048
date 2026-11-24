@@ -259,8 +259,8 @@ canvas {
   align-items: center;
   justify-content: center;
   padding: 20px 14px;
-  background: rgba(12, 23, 18, 0.62);
-  backdrop-filter: blur(4px);
+  background: rgba(12, 23, 18, 0.44);
+  backdrop-filter: blur(2.5px);
   pointer-events: auto;
   overflow-y: auto;
 }
