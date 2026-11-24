@@ -267,7 +267,7 @@ try {
   const shotGameplay1440 = path.join(SHOT_DIR, 'gameplay-1440.png');
   await page.screenshot({ path: shotGameplay1440 });
 
-  // Showcase all 11 tree tiers on the island at 1440
+  // Showcase all 11 tree tiers on the island at 1440 (Spring Day baseline)
   await page.evaluate(() => {
     window.__game.setGrid(
       [
@@ -276,12 +276,72 @@ try {
         [16, 8, 4, 2],
         [0, 0, 0, 0],
       ],
-      { score: 14820, turns: 120, hasWon: true, state: 'continue' }
+      { score: 240, turns: 18, hasWon: true, state: 'continue' }
     );
+    window.__game.settleAtmosphere();
   });
-  await page.waitForTimeout(350);
+  await page.waitForTimeout(300);
+  const springPhase = await page.evaluate(() => window.__game.atmosphere());
+  assert.equal(springPhase.season, 'spring');
+  assert.equal(springPhase.timeOfDay, 'day');
   const shotShowcase1440 = path.join(SHOT_DIR, 'showcase-all-tiers-1440.png');
   await page.screenshot({ path: shotShowcase1440 });
+
+  // 3b. Score-driven world clock progression through forced merges:
+  // Cross into Autumn Dusk via a real 512+512 merge (6200 -> 7224)
+  await page.evaluate(() => {
+    window.__game.setGrid(
+      [
+        [2048, 1024, 256, 128],
+        [512, 512, 64, 32],
+        [16, 8, 4, 2],
+        [0, 0, 0, 0],
+      ],
+      { score: 6200, turns: 70, hasWon: true, state: 'continue' }
+    );
+    window.__game.move('left');
+    window.__game.settleAnimations();
+    window.__game.settleAtmosphere();
+  });
+  await page.waitForTimeout(300);
+  const autumnPhase = await page.evaluate(() => ({
+    atmo: window.__game.atmosphere(),
+    pill: document.getElementById('phase-label').textContent,
+    score: window.__game.score(),
+  }));
+  assert.equal(autumnPhase.atmo.season, 'autumn');
+  assert.equal(autumnPhase.atmo.timeOfDay, 'dusk');
+  assert.match(autumnPhase.pill, /Autumn/i);
+  const shotAutumnDusk1440 = path.join(SHOT_DIR, 'autumn-dusk-1440.png');
+  await page.screenshot({ path: shotAutumnDusk1440 });
+
+  // Cross into Winter Night via a real 1024+1024 merge (16500 -> 18548)
+  await page.evaluate(() => {
+    window.__game.setGrid(
+      [
+        [2048, 1024, 512, 256],
+        [1024, 1024, 64, 32],
+        [16, 8, 4, 2],
+        [128, 0, 0, 0],
+      ],
+      { score: 16500, turns: 140, hasWon: true, state: 'continue' }
+    );
+    window.__game.move('left');
+    window.__game.settleAnimations();
+    window.__game.settleAtmosphere();
+  });
+  await page.waitForTimeout(350);
+  const winterPhase = await page.evaluate(() => ({
+    atmo: window.__game.atmosphere(),
+    pill: document.getElementById('phase-label').textContent,
+    score: window.__game.score(),
+  }));
+  assert.equal(winterPhase.atmo.season, 'winter');
+  assert.equal(winterPhase.atmo.timeOfDay, 'night');
+  assert.match(winterPhase.pill, /Winter/i);
+  const shotWinterNight1440 = path.join(SHOT_DIR, 'winter-night-1440.png');
+  await page.screenshot({ path: shotWinterNight1440 });
+  console.log(`PASS: score-driven world clock (${springPhase.label} -> ${autumnPhase.atmo.label} -> ${winterPhase.atmo.label})`);
 
   // 4. Forced win reaching the World Tree (2048) + win-moment reveal + Keep playing (continue)
   await page.evaluate(() => {
@@ -297,9 +357,12 @@ try {
     window.__game.move('left');
   });
 
-  // Capture the World Tree reveal moment (fireflies, golden shockwave, vignette glow,
-  // elevated camera) BEFORE the win panel appears.
+  // Capture the World Tree reveal moment (Golden Dawn bloom, fireflies, golden shockwave,
+  // vignette glow, elevated camera) BEFORE the win panel appears.
   await page.waitForTimeout(560);
+  const winBloomAtmo = await page.evaluate(() => window.__game.atmosphere());
+  assert.equal(winBloomAtmo.isWinBloom, true, 'World Tree win should activate Golden Dawn bloom');
+  assert.equal(winBloomAtmo.label, 'Golden Dawn');
   const shotWinMoment1440 = path.join(SHOT_DIR, 'win-moment-1440.png');
   await page.screenshot({ path: shotWinMoment1440 });
 
@@ -510,7 +573,7 @@ try {
   assert.equal(afterDpadLeft[1][0], 16, 'D-pad left tap must slide tile to col 0');
   console.log('PASS: mobile D-pad tap moves tiles cleanly');
 
-  // 6f. Capture clean 390x844 mobile screenshot showing new controls & rich grove
+  // 6f. Capture clean 390x844 mobile screenshots across Spring Day, Autumn Dusk, and Winter Night
   await mPage.evaluate(() => {
     window.__game.setGrid(
       [
@@ -519,12 +582,60 @@ try {
         [16, 8, 4, 2],
         [0, 0, 0, 0],
       ],
-      { score: 9460, turns: 88, hasWon: true, state: 'continue' }
+      { score: 240, turns: 18, hasWon: true, state: 'continue' }
     );
+    window.__game.settleAtmosphere();
   });
   await mPage.waitForTimeout(300);
   const shotMobile390 = path.join(SHOT_DIR, 'mobile-390.png');
   await mPage.screenshot({ path: shotMobile390 });
+
+  await mPage.evaluate(() => {
+    window.__game.setGrid(
+      [
+        [2048, 1024, 512, 256],
+        [128, 64, 32, 0],
+        [16, 8, 4, 2],
+        [0, 0, 0, 0],
+      ],
+      { score: 7400, turns: 78, hasWon: true, state: 'continue' }
+    );
+    window.__game.settleAtmosphere();
+  });
+  await mPage.waitForTimeout(300);
+  const shotAutumnDusk390 = path.join(SHOT_DIR, 'autumn-dusk-390.png');
+  await mPage.screenshot({ path: shotAutumnDusk390 });
+
+  await mPage.evaluate(() => {
+    window.__game.setGrid(
+      [
+        [2048, 1024, 512, 256],
+        [128, 64, 32, 0],
+        [16, 8, 4, 2],
+        [0, 0, 0, 0],
+      ],
+      { score: 18500, turns: 148, hasWon: true, state: 'continue' }
+    );
+    window.__game.settleAtmosphere();
+  });
+  await mPage.waitForTimeout(300);
+  const shotWinterNight390 = path.join(SHOT_DIR, 'winter-night-390.png');
+  await mPage.screenshot({ path: shotWinterNight390 });
+
+  // Return to Spring Day for tap-inspect + mid-swipe gesture check
+  await mPage.evaluate(() => {
+    window.__game.setGrid(
+      [
+        [2048, 1024, 512, 256],
+        [128, 64, 32, 0],
+        [16, 8, 4, 2],
+        [0, 0, 0, 0],
+      ],
+      { score: 240, turns: 18, hasWon: true, state: 'continue' }
+    );
+    window.__game.settleAtmosphere();
+  });
+  await mPage.waitForTimeout(180);
 
   // 6f2. Verify quick tap on a 3D tree canopy inspects its tier name in #hover-pill
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 185, y: 345, id: 6 }] });
@@ -588,11 +699,15 @@ try {
   console.log('SCREENSHOTS:', JSON.stringify([
     shotGameplay1440,
     shotShowcase1440,
+    shotAutumnDusk1440,
+    shotWinterNight1440,
     shotWinMoment1440,
     shotWin1440,
     shotLoss1440,
     shotMenu1440,
     shotMobile390,
+    shotAutumnDusk390,
+    shotWinterNight390,
     shotMobileSwipeMid,
   ]));
 } finally {

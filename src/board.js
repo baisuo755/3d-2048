@@ -320,12 +320,14 @@ export function createBoard(scene, particles) {
     })
   );
   const halfTerrace = terraceSize / 2 - 0.12;
-  for (const [bx, bz] of [
-    [-halfTerrace, -halfTerrace],
-    [halfTerrace, -halfTerrace],
-    [-halfTerrace, halfTerrace],
-    [halfTerrace, halfTerrace],
-  ]) {
+  const lanternLights = [];
+  const bollardCorners = [
+    [-halfTerrace, -halfTerrace, true],
+    [halfTerrace, -halfTerrace, false],
+    [-halfTerrace, halfTerrace, false],
+    [halfTerrace, halfTerrace, true],
+  ];
+  for (const [bx, bz, hasLight] of bollardCorners) {
     const post = new THREE.Mesh(bollardGeo, terraceMat);
     post.position.set(bx, 0.14, bz);
     post.castShadow = true;
@@ -335,6 +337,13 @@ export function createBoard(scene, particles) {
     const gem = new THREE.Mesh(lanternCapGeo, lanternGlowMat);
     gem.position.set(bx, 0.29, bz);
     islandGroup.add(gem);
+
+    if (hasLight) {
+      const pt = new THREE.PointLight(0xffbd4a, 0, 7.5, 1.5);
+      pt.position.set(bx * 0.92, 0.55, bz * 0.92);
+      islandGroup.add(pt);
+      lanternLights.push(pt);
+    }
   }
 
   const frameSize = SIZE * SPACING + 0.30;
@@ -779,6 +788,28 @@ export function createBoard(scene, particles) {
     }
   }
 
+  const tmpCol = new THREE.Color();
+
+  function applyAtmosphere(islandTarget, alpha) {
+    const a = Math.min(1, Math.max(0, alpha));
+    grassTopMat.color.lerp(tmpCol.setHex(islandTarget.grassTop), a);
+    grassHighlightMat.color.lerp(tmpCol.setHex(islandTarget.grassHighlight), a);
+    grassRimMat.color.lerp(tmpCol.setHex(islandTarget.grassRim), a);
+    vineMat.color.lerp(tmpCol.setHex(islandTarget.vine), a);
+    tuftMat.color.lerp(tmpCol.setHex(islandTarget.tuft), a);
+    flowerCreamMat.color.lerp(tmpCol.setHex(islandTarget.flowerA), a);
+    flowerCoralMat.color.lerp(tmpCol.setHex(islandTarget.flowerB), a);
+    waterMat.color.lerp(tmpCol.setHex(islandTarget.water), a);
+    waterMat.emissive.lerp(tmpCol.setHex(islandTarget.waterEmissive), a);
+    terraceMat.color.lerp(tmpCol.setHex(islandTarget.terrace), a);
+    rimMat.color.lerp(tmpCol.setHex(islandTarget.rim), a);
+    lanternGlowMat.emissiveIntensity +=
+      (islandTarget.lanternEmissive - lanternGlowMat.emissiveIntensity) * a;
+    for (const pt of lanternLights) {
+      pt.intensity += (islandTarget.lanternLight - pt.intensity) * a;
+    }
+  }
+
   function dispose() {
     clearTrees();
     for (const g of disposableGeos) g.dispose();
@@ -795,6 +826,7 @@ export function createBoard(scene, particles) {
     pickCell,
     setReducedMotion,
     getWorldTreeWorldPos,
+    applyAtmosphere,
     tick,
     dispose,
   };

@@ -9,6 +9,7 @@ import { createScene } from './scene.js';
 import { createParticles } from './particles.js';
 import { createBoard } from './board.js';
 import { cameraBasisToGridDir, createSwipeRecognizer } from './touch.js';
+import { getWorldPhase, getAtmosphereTarget } from './atmosphere.js';
 
 // ------------------------------------------------------------ Persistence
 
@@ -115,6 +116,8 @@ const tierLegend = $('tier-legend');
 const hoverPill = $('hover-pill');
 const hoverSwatch = $('hover-swatch');
 const hoverName = $('hover-name');
+const phaseDot = $('phase-dot');
+const phaseLabel = $('phase-label');
 const swipeIndicator = $('swipe-indicator');
 
 const btnModeSlide = $('btn-mode-slide');
@@ -153,6 +156,24 @@ let tapInspectTimer = 0;
 let swipeHideTimer = 0;
 let touchMode = 'slide'; // "slide" | "orbit"
 const camKick = new THREE.Vector3(); // subtle damped camera micro-move impulse
+let currentPhase = getWorldPhase(0);
+let atmosphereTarget = getAtmosphereTarget(currentPhase);
+
+function syncAtmosphereTarget(immediate = false) {
+  const score = game ? game.score : 0;
+  const state = game ? game.state : 'ready';
+  currentPhase = getWorldPhase(score, { state });
+  atmosphereTarget = getAtmosphereTarget(currentPhase);
+  phaseDot.style.background = currentPhase.dotColor;
+  phaseDot.style.color = currentPhase.dotColor;
+  phaseLabel.textContent = currentPhase.label;
+  particles.setAtmosphereWeather(atmosphereTarget.weather);
+  if (immediate) {
+    view.applyAtmosphere(atmosphereTarget.sky, 1);
+    board.applyAtmosphere(atmosphereTarget.island, 1);
+    particles.settleAtmosphere();
+  }
+}
 
 function setTouchMode(mode) {
   touchMode = mode === 'orbit' ? 'orbit' : 'slide';
@@ -177,6 +198,7 @@ function updateHud() {
   }
   hudScore.textContent = String(game.score);
   hudBest.textContent = String(bestScore);
+  syncAtmosphereTarget(false);
   updateHoverLabel();
 }
 
@@ -298,6 +320,7 @@ function startNewGame(seed) {
   game = createGame({ seed: resolveSeed(seed) });
   board.syncImmediate(game.tiles());
   updateHud();
+  syncAtmosphereTarget(true);
   return game.grid();
 }
 
@@ -319,6 +342,7 @@ function loadCustomGrid(grid4x4, opts = {}) {
   }
   board.syncImmediate(game.tiles());
   updateHud();
+  syncAtmosphereTarget(true);
   if (game.state === 'won') showEndPanel('won');
   else if (game.state === 'lost') showEndPanel('lost');
   return game.grid();
@@ -670,7 +694,13 @@ function frame() {
   view.controls.target.lerp(targetGoal, 1 - Math.exp(-5.2 * dt));
   view.controls.update();
 
-  view.tick(dt, reducedMotion);
+  // Smooth multi-second atmospheric cross-fade (damped/shortened under prefers-reduced-motion).
+  const atmoRate = reducedMotion ? 8.5 : 1.35;
+  const atmoAlpha = 1 - Math.exp(-atmoRate * dt);
+  view.applyAtmosphere(atmosphereTarget.sky, atmoAlpha);
+  board.applyAtmosphere(atmosphereTarget.island, atmoAlpha);
+
+  view.tick(dt, reducedMotion, elapsed);
   board.tick(dt, elapsed);
   particles.tick(dt, elapsed);
 
@@ -713,6 +743,15 @@ window.__game = {
   setGrid: (grid4x4, opts) => loadCustomGrid(grid4x4, opts),
   keepPlaying: () => continueAfterWin(),
   settleAnimations: () => board.finishAnimationNow(),
+  atmosphere: () => ({
+    season: currentPhase.season,
+    timeOfDay: currentPhase.timeOfDay,
+    label: currentPhase.label,
+    progress: Number(currentPhase.progress.toFixed(3)),
+    isWinBloom: currentPhase.isWinBloom,
+    nightWeight: Number(currentPhase.nightWeight.toFixed(3)),
+  }),
+  settleAtmosphere: () => syncAtmosphereTarget(true),
   touchMode: () => touchMode,
   cameraPos: () => ({
     x: Number(view.camera.position.x.toFixed(3)),

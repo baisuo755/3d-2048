@@ -1,9 +1,11 @@
 // Particle systems for Grove:
 // 1. Multi-tone fluttering leaf bursts + subtle golden sparkles on high-tier merges.
 // 2. Expanding plot bloom rings on merge and golden island shockwave on World Tree win.
-// 3. Ambient & celebration fireflies around the World Tree + gentle meadow pollen motes.
-// 4. Waterfall mist puffs at the sanctuary edge.
-// All particles respect prefers-reduced-motion (dropped when reduced).
+// 3. Ambient & celebration fireflies around the World Tree + dusk/night grove fireflies.
+// 4. Seasonal ambient weather: spring blossoms/pollen, summer sunlit motes, autumn
+//    falling orange/crimson leaves, and winter gentle snowflakes.
+// 5. Waterfall mist puffs at the sanctuary edge.
+// Respects compactMode (phones) and prefers-reduced-motion (heavy weather trimmed/dropped).
 
 import * as THREE from 'three';
 
@@ -11,30 +13,42 @@ const LEAF_GEO = new THREE.OctahedronGeometry(0.088, 0);
 const FIREFLY_GEO = new THREE.IcosahedronGeometry(0.075, 0);
 const RING_GEO = new THREE.RingGeometry(0.32, 0.44, 24);
 const MIST_GEO = new THREE.IcosahedronGeometry(0.11, 0);
-const POLLEN_GEO = new THREE.OctahedronGeometry(0.032, 0);
+const POLLEN_GEO = new THREE.OctahedronGeometry(0.036, 0);
+const SNOW_GEO = new THREE.IcosahedronGeometry(0.052, 0);
 
 export function createParticles(scene) {
   const leafGroup = new THREE.Group();
   const fireflyGroup = new THREE.Group();
   const ringGroup = new THREE.Group();
   const ambientGroup = new THREE.Group();
-  scene.add(leafGroup, fireflyGroup, ringGroup, ambientGroup);
+  const weatherGroup = new THREE.Group();
+  scene.add(leafGroup, fireflyGroup, ringGroup, ambientGroup, weatherGroup);
 
   const leaves = [];
   const winFireflies = [];
   const ambientFireflies = [];
+  const duskFireflies = [];
   const rings = [];
   const mistPuffs = [];
-  const pollenMotes = [];
+  const weatherParticles = [];
   let worldTreeAnchors = [];
   let waterfallOrigin = null;
   let reducedMotion = false;
   let compactMode = false;
+  let currentSeason = 'spring';
+  let targetFireflyFactor = 0;
+  let currentFireflyFactor = 0;
 
   const fireflyMat = new THREE.MeshBasicMaterial({
     color: 0xffd24a,
     transparent: true,
     opacity: 0.96,
+  });
+
+  const duskFireflyMat = new THREE.MeshBasicMaterial({
+    color: 0xffd966,
+    transparent: true,
+    opacity: 0,
   });
 
   const fireflyMintMat = new THREE.MeshBasicMaterial({
@@ -43,31 +57,119 @@ export function createParticles(scene) {
     opacity: 0.9,
   });
 
-  const pollenMat = new THREE.MeshBasicMaterial({
-    color: 0xfff6cf,
-    transparent: true,
-    opacity: 0.52,
-  });
+  // Shared materials per weather type (zero per-frame material allocations!).
+  const weatherMats = {
+    pollen: new THREE.MeshBasicMaterial({ color: 0xfff6cf, transparent: true, opacity: 0.56 }),
+    blossom: new THREE.MeshBasicMaterial({ color: 0xffbfd6, transparent: true, opacity: 0.84 }),
+    autumnA: new THREE.MeshBasicMaterial({ color: 0xeb7e31, transparent: true, opacity: 0.88 }),
+    autumnB: new THREE.MeshBasicMaterial({ color: 0xd1492f, transparent: true, opacity: 0.88 }),
+    autumnC: new THREE.MeshBasicMaterial({ color: 0xf2be42, transparent: true, opacity: 0.86 }),
+    snow: new THREE.MeshBasicMaterial({ color: 0xf0f9ff, transparent: true, opacity: 0.86 }),
+  };
 
-  function initPollen() {
-    for (const p of pollenMotes) ambientGroup.remove(p.mesh);
-    pollenMotes.length = 0;
+  function rebuildWeather() {
+    for (const w of weatherParticles) weatherGroup.remove(w.mesh);
+    weatherParticles.length = 0;
     if (reducedMotion) return;
-    const count = compactMode ? 10 : 16;
+
+    if (currentSeason === 'winter') {
+      const count = compactMode ? 16 : 28;
+      for (let i = 0; i < count; i++) {
+        const mesh = new THREE.Mesh(SNOW_GEO, weatherMats.snow);
+        const s = 0.75 + Math.random() * 0.7;
+        mesh.scale.setScalar(s);
+        weatherGroup.add(mesh);
+        weatherParticles.push({
+          kind: 'snow',
+          mesh,
+          x: (Math.random() - 0.5) * 10.5,
+          y: 0.2 + Math.random() * 5.8,
+          z: (Math.random() - 0.5) * 10.5,
+          fallSpeed: 0.55 + Math.random() * 0.45,
+          swayAmp: 0.35 + Math.random() * 0.4,
+          phase: Math.random() * Math.PI * 2,
+        });
+      }
+    } else if (currentSeason === 'autumn') {
+      const count = compactMode ? 11 : 18;
+      const mats = [weatherMats.autumnA, weatherMats.autumnB, weatherMats.autumnC];
+      for (let i = 0; i < count; i++) {
+        const mesh = new THREE.Mesh(LEAF_GEO, mats[i % mats.length]);
+        mesh.scale.set(1.1, 0.28, 0.72);
+        weatherGroup.add(mesh);
+        weatherParticles.push({
+          kind: 'autumn',
+          mesh,
+          x: (Math.random() - 0.5) * 9.8,
+          y: 0.3 + Math.random() * 5.4,
+          z: (Math.random() - 0.5) * 9.8,
+          fallSpeed: 0.48 + Math.random() * 0.38,
+          driftX: 0.28 + Math.random() * 0.25,
+          swayAmp: 0.45 + Math.random() * 0.45,
+          spin: 1.4 + Math.random() * 2.2,
+          phase: Math.random() * Math.PI * 2,
+        });
+      }
+    } else {
+      // Spring (pollen + pink blossom petals) & Summer (warm sunlit meadow motes)
+      const count = compactMode ? 10 : 16;
+      for (let i = 0; i < count; i++) {
+        const isBlossom = currentSeason === 'spring' && i % 3 === 0;
+        const mesh = new THREE.Mesh(
+          isBlossom ? LEAF_GEO : POLLEN_GEO,
+          isBlossom ? weatherMats.blossom : weatherMats.pollen
+        );
+        if (isBlossom) mesh.scale.set(0.75, 0.24, 0.52);
+        weatherGroup.add(mesh);
+        const angle = (i / count) * Math.PI * 2 + Math.random() * 0.5;
+        const rad = 1.0 + Math.random() * 3.8;
+        weatherParticles.push({
+          kind: 'float',
+          mesh,
+          baseX: Math.cos(angle) * rad,
+          baseY: 0.5 + Math.random() * 2.3,
+          baseZ: Math.sin(angle) * rad,
+          phase: Math.random() * Math.PI * 2,
+          speed: 0.45 + Math.random() * 0.55,
+        });
+      }
+    }
+  }
+
+  function rebuildDuskFireflies() {
+    for (const f of duskFireflies) fireflyGroup.remove(f.mesh);
+    duskFireflies.length = 0;
+    if (reducedMotion) return;
+
+    const count = compactMode ? 9 : 15;
     for (let i = 0; i < count; i++) {
-      const mesh = new THREE.Mesh(POLLEN_GEO, pollenMat);
-      ambientGroup.add(mesh);
-      const angle = (i / count) * Math.PI * 2 + Math.random() * 0.5;
-      const rad = 1.0 + Math.random() * 3.6;
-      pollenMotes.push({
+      const mesh = new THREE.Mesh(FIREFLY_GEO, duskFireflyMat);
+      fireflyGroup.add(mesh);
+      const angle = (i / count) * Math.PI * 2 + Math.random() * 0.4;
+      const rad = 1.2 + Math.random() * 3.4;
+      duskFireflies.push({
         mesh,
         baseX: Math.cos(angle) * rad,
-        baseY: 0.45 + Math.random() * 2.2,
+        baseY: 0.45 + Math.random() * 2.1,
         baseZ: Math.sin(angle) * rad,
         phase: Math.random() * Math.PI * 2,
-        speed: 0.45 + Math.random() * 0.55,
+        speed: 0.5 + Math.random() * 0.65,
       });
     }
+  }
+
+  function setAtmosphereWeather(weather) {
+    if (!weather) return;
+    targetFireflyFactor = Math.max(0, Math.min(1, weather.fireflyFactor ?? 0));
+    if (weather.season && weather.season !== currentSeason) {
+      currentSeason = weather.season;
+      rebuildWeather();
+    }
+  }
+
+  function settleAtmosphere() {
+    currentFireflyFactor = targetFireflyFactor;
+    duskFireflyMat.opacity = reducedMotion ? 0 : currentFireflyFactor * 0.88;
   }
 
   function setWaterfallOrigin(pos) {
@@ -136,8 +238,10 @@ export function createParticles(scene) {
     reducedMotion = Boolean(flag);
     if (reducedMotion) {
       clear();
+      duskFireflyMat.opacity = 0;
     }
-    initPollen();
+    rebuildWeather();
+    rebuildDuskFireflies();
     rebuildAmbientFireflies();
   }
 
@@ -162,7 +266,8 @@ export function createParticles(scene) {
     const next = Boolean(flag);
     if (next === compactMode) return;
     compactMode = next;
-    initPollen();
+    rebuildWeather();
+    rebuildDuskFireflies();
     rebuildAmbientFireflies();
   }
 
@@ -210,7 +315,6 @@ export function createParticles(scene) {
 
   function triggerWinFireflies(x, y, z) {
     if (reducedMotion) return;
-    // Dramatic golden shockwave ring expanding across the sanctuary.
     spawnMergeRing(x, 0.16, z, 0xffd75e, 9.5, 0.95);
 
     const count = compactMode ? 32 : 48;
@@ -302,15 +406,61 @@ export function createParticles(scene) {
       f.mesh.scale.setScalar(pulse);
     }
 
-    // Gentle sunlit pollen drifting above the meadow.
     if (!reducedMotion) {
-      for (const m of pollenMotes) {
-        m.mesh.position.set(
-          m.baseX + Math.sin(elapsed * m.speed + m.phase) * 0.45,
-          m.baseY + Math.cos(elapsed * m.speed * 0.8 + m.phase) * 0.22,
-          m.baseZ + Math.cos(elapsed * m.speed * 0.9 + m.phase) * 0.45
+      // Smoothly cross-fade dusk/night ambient grove fireflies.
+      currentFireflyFactor += (targetFireflyFactor - currentFireflyFactor) * (1 - Math.exp(-1.8 * dt));
+      duskFireflyMat.opacity = currentFireflyFactor * 0.88;
+      const showDusk = currentFireflyFactor > 0.02;
+      for (const f of duskFireflies) {
+        f.mesh.visible = showDusk;
+        if (!showDusk) continue;
+        f.mesh.position.set(
+          f.baseX + Math.sin(elapsed * f.speed + f.phase) * 0.65,
+          f.baseY + Math.cos(elapsed * f.speed * 1.3 + f.phase) * 0.28,
+          f.baseZ + Math.cos(elapsed * f.speed * 0.9 + f.phase) * 0.65
         );
-        m.mesh.rotation.y += dt * 1.1;
+        const pulse = (0.55 + 0.55 * Math.sin(elapsed * 4.2 + f.phase)) * currentFireflyFactor;
+        f.mesh.scale.setScalar(Math.max(0.01, pulse * 0.9));
+      }
+
+      // Seasonal weather particles (spring petals/pollen, autumn falling leaves, winter snow).
+      for (const w of weatherParticles) {
+        if (w.kind === 'snow') {
+          w.y -= w.fallSpeed * dt;
+          if (w.y < -0.4) {
+            w.y = 5.4 + Math.random() * 0.8;
+            w.x = (Math.random() - 0.5) * 10.5;
+            w.z = (Math.random() - 0.5) * 10.5;
+          }
+          w.mesh.position.set(
+            w.x + Math.sin(elapsed * 1.1 + w.phase) * w.swayAmp,
+            w.y,
+            w.z + Math.cos(elapsed * 0.95 + w.phase) * w.swayAmp
+          );
+        } else if (w.kind === 'autumn') {
+          w.y -= w.fallSpeed * dt;
+          w.x += w.driftX * dt;
+          if (w.y < 0.0 || w.x > 5.4) {
+            w.y = 4.8 + Math.random() * 1.2;
+            w.x = -4.8 + Math.random() * 8.0;
+            w.z = (Math.random() - 0.5) * 9.5;
+          }
+          w.mesh.position.set(
+            w.x + Math.sin(elapsed * 1.6 + w.phase) * w.swayAmp,
+            w.y,
+            w.z + Math.cos(elapsed * 1.2 + w.phase) * w.swayAmp * 0.6
+          );
+          w.mesh.rotation.x += w.spin * dt;
+          w.mesh.rotation.y += w.spin * 0.8 * dt;
+          w.mesh.rotation.z += w.spin * 0.5 * dt;
+        } else {
+          w.mesh.position.set(
+            w.baseX + Math.sin(elapsed * w.speed + w.phase) * 0.45,
+            w.baseY + Math.cos(elapsed * w.speed * 0.8 + w.phase) * 0.22,
+            w.baseZ + Math.cos(elapsed * w.speed * 0.9 + w.phase) * 0.45
+          );
+          w.mesh.rotation.y += dt * 1.2;
+        }
       }
 
       // Delicate waterfall mist puffs drifting off the waterfall cliff edge.
@@ -359,18 +509,22 @@ export function createParticles(scene) {
     }
   }
 
-  initPollen();
+  rebuildWeather();
+  rebuildDuskFireflies();
 
   function dispose() {
     clear();
     for (const f of ambientFireflies) fireflyGroup.remove(f.mesh);
     ambientFireflies.length = 0;
-    for (const m of pollenMotes) ambientGroup.remove(m.mesh);
-    pollenMotes.length = 0;
+    for (const f of duskFireflies) fireflyGroup.remove(f.mesh);
+    duskFireflies.length = 0;
+    for (const w of weatherParticles) weatherGroup.remove(w.mesh);
+    weatherParticles.length = 0;
     fireflyMat.dispose();
+    duskFireflyMat.dispose();
     fireflyMintMat.dispose();
-    pollenMat.dispose();
-    scene.remove(leafGroup, fireflyGroup, ringGroup, ambientGroup);
+    for (const m of Object.values(weatherMats)) m.dispose();
+    scene.remove(leafGroup, fireflyGroup, ringGroup, ambientGroup, weatherGroup);
   }
 
   return {
@@ -379,6 +533,8 @@ export function createParticles(scene) {
     triggerWinFireflies,
     setWorldTreePositions,
     setWaterfallOrigin,
+    setAtmosphereWeather,
+    settleAtmosphere,
     setReducedMotion,
     setCompactMode,
     clear,

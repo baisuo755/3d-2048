@@ -32,6 +32,21 @@ Append `?seed=N` (numeric or string) to the URL for a deterministic spawn sequen
 - Sculpted floating island with stepped two-tone meadow patches, carved sandstone garden terrace with glowing corner lantern bollards, asymmetric cliff crags and hanging vines, coral & cream wildflowers, and a spring pond feeding a tapered misty waterfall.
 - Every tree tier is built procedurally in `src/trees.js` with distinct height, silhouette, trunk structure, and foliage hue so the board plays cleanly without numbers.
 
+## Score-driven world clock (Seasons & Day/Night)
+
+As your score grows, the sanctuary moves monotonically forward through the four seasons, and within each season light progresses smoothly from **Day → Dusk → Night** (multi-second cross-fade, never a hard pop):
+
+| Season | Score band | Day | Dusk | Night | Seasonal craft |
+| --- | --- | --- | --- | --- | --- |
+| **Spring** | `0 – 1,499` | `0 – 599` | `600 – 1,049` | `1,050 – 1,499` | Vibrant green meadow, pink & cream blossoms, drifting pollen & petals |
+| **Summer** | `1,500 – 4,499` | `1,500 – 2,699` | `2,700 – 3,599` | `3,600 – 4,499` | Deep emerald meadow, marigold & coral flowers, lush twilight fireflies |
+| **Autumn** | `4,500 – 9,999` | `4,500 – 6,699` | `6,700 – 8,349` | `8,350 – 9,999` | Golden-ochre meadow, warm amber dusk sky, tumbling orange & crimson leaves |
+| **Winter** | `10,000+` | `10,000 – 13,999` | `14,000 – 16,999` | `17,000+` | Frosted glacier-sage meadow, icy waterfall, falling snow, starlit moonlit night |
+
+- **Celestial & lantern lighting**: Day shows the warm solar halo; from dusk onward, corner sanctuary lanterns flare warmly and ambient fireflies drift across the grove; night brings a twinkling starfield, a rising silver moon, and balanced moonlit fill + warm lantern pools so all 11 tree hues stay distinct at a glance.
+- **Golden Dawn win bloom**: Growing the World Tree (`won`) bathes the sanctuary in a celestial **Golden Dawn** sunrise; clicking **Keep playing** (`continue`) resumes the score-driven season.
+- **Reduced motion**: Under `prefers-reduced-motion`, cross-fades are shortened/damped, stars remain static, and ambient weather particles (falling leaves, snow, petals, dusk fireflies) are disabled.
+
 ## Tiers
 
 | Tier | Face value | Tree | Silhouette & palette |
@@ -78,13 +93,14 @@ On touch devices, **Slide** mode is active by default so single-finger swipes ne
 - `src/tiers.js` — 11-tier progression metadata
 - `src/engine.js` — pure-JS 2048 engine (no DOM, no Three.js)
 - `src/touch.js` — pure touch-swipe recognizer and camera-relative direction mapping
-- `src/scene.js` — Three.js renderer, portrait-aware camera, OrbitControls, sunlit sky dome & two-altitude clouds
+- `src/atmosphere.js` — pure score-driven season & day/dusk/night world clock and palette targets
+- `src/scene.js` — Three.js renderer, portrait-aware camera, OrbitControls, dynamic sky dome, stars, moon & two-altitude clouds
 - `src/trees.js` — procedural low-poly mesh generator for all 11 tiers
-- `src/board.js` — floating sanctuary island, waterfall, 16 carved plot planters, tile animations, tree-first raycasting
-- `src/particles.js` — leaf bursts, merge bloom rings, fireflies, pollen motes, waterfall mist
+- `src/board.js` — floating sanctuary island, waterfall, 16 carved plot planters, seasonal surface tints, lantern lights, tile animations, tree-first raycasting
+- `src/particles.js` — leaf bursts, merge bloom rings, fireflies, seasonal weather (petals, autumn leaves, snow), waterfall mist
 - `src/main.js` — input wiring, `localStorage` best score, haptics, reduced motion, visibility pause, `window.__game` hook
 - `vendor/three/` — vendored Three.js ES module and `OrbitControls`
-- `tests/engine.test.mjs`, `tests/touch.test.mjs` — Node unit test suites (18 tests)
+- `tests/engine.test.mjs`, `tests/touch.test.mjs`, `tests/atmosphere.test.mjs` — Node unit test suites (22 tests)
 - `scripts/e2e.mjs` — Playwright end-to-end verification (desktop 1440, `hasTouch` 390, reduced motion) and screenshot capture
 
 ## Tests & debug hook
@@ -113,6 +129,8 @@ window.__game = {
   setGrid(grid, opts?),  // load a 4×4 grid for deterministic scenario checks
   keepPlaying(),         // transition from "won" to "continue"
   settleAnimations(),    // snap active tile animations immediately
+  atmosphere(),          // { season, timeOfDay, label, progress, isWinBloom, nightWeight }
+  settleAtmosphere(),    // snap active atmospheric cross-fade immediately
   touchMode(),           // "slide" | "orbit"
   cameraPos(),           // { x, y, z } rounded camera world coordinates
 }

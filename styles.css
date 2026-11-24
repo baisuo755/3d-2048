@@ -263,6 +263,42 @@ canvas {
   box-shadow: 0 8px 22px rgba(15, 28, 20, 0.2);
 }
 
+/* ----------------------------------------------------------- World Phase Pill */
+
+.phase-pill {
+  position: absolute;
+  left: 50%;
+  top: max(18px, env(safe-area-inset-top));
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(20, 35, 27, 0.72);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(215, 232, 196, 0.22);
+  color: #eef1e6;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  box-shadow: 0 6px 18px rgba(15, 28, 20, 0.2);
+  pointer-events: none;
+  z-index: 18;
+  white-space: nowrap;
+}
+
+.phase-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #8be05a;
+  box-shadow: 0 0 8px currentColor;
+  flex-shrink: 0;
+  transition: background-color 400ms ease;
+}
+
 /* ----------------------------------------------------------- Hover Tooltip */
 
 .hover-pill {
@@ -778,6 +814,13 @@ body.has-touch .touch-tools {
     min-height: 44px;
     padding: 0 12px;
     font-size: 13.5px;
+  }
+
+  .phase-pill {
+    top: calc(max(10px, env(safe-area-inset-top)) + 52px);
+    height: 28px;
+    padding: 0 11px;
+    font-size: 11.5px;
   }
 
   .controls-dock {
