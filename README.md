@@ -1,84 +1,101 @@
 # 3D 2048 — Grove
 
-A 3D remake of 2048: plain HTML/CSS/JS with Three.js (vendored, no build step, no npm). The numbers are gone — tiles are low-poly trees that **grow** when two identical ones merge. Grow the World Tree (tier 2048) to win.
+A 3D remake of 2048 built with plain HTML/CSS/JS ES modules and vendored Three.js (no build step, no npm dependencies). Numbers never appear on the board: every tile is a procedural low-poly tree on a floating grass island. Merge two identical trees to grow the next tier; grow the **World Tree** (2048) to win.
 
-Status: **planning**. Round 1 (the full build) is assigned to Antigravity Pilot on branch `antigravity-r1` — see PLAN.md. Until that lands, this README is the spec the build must satisfy, not a description of working software.
+## How to run
 
-## Concept
+```bash
+python3 -m http.server 8080
+```
 
-Classic 4×4 2048 rules, played on a floating island seen in 3D. Every tile is a tree model; merging two identical trees grows one tree of the next tier at the destination cell. Reaching the World Tree (2048) wins.
+Then open http://localhost:8080.
 
-Why trees: merge-to-grow *is* the mechanic — two of a kind combine into a bigger kind, so the theme explains the rules without numbers. Tiers read instantly by size, silhouette and leaf hue, which keeps a numberless board fair.
-
-Theme alternates (one-line swap if Baisuo prefers): animals — egg → hatchling → … evolution chain; city — tent → hut → … megacity skyline. Grove is the round-1 pick.
+Append `?seed=N` (numeric or string) to the URL for a deterministic spawn sequence across loads and restarts.
 
 ## Rules (exact 2048)
 
-- 4×4 grid. A move slides every tile in one direction as far as it can go.
-- Two tiles of the same tier merge into the next tier at the far cell; each tile merges at most once per move.
-- A move that changes nothing is not a move: no spawn, no turn.
-- After each effective move one new tile spawns in a random empty cell: 90% Seed (2), 10% Sprout (4).
-- Score: each merge adds the new tile's face value. Best score persists in localStorage (`grove2048.best.v1`).
-- Win: create the World Tree (2048) — the panel offers Keep playing (state `continue`).
-- Lose: no empty cell and no adjacent equal pair (state `lost`).
+- 4×4 plot grid on a floating island. Each move slides every tree in one direction as far as it can go.
+- Two identical trees merge into the next tier at the destination plot; each tree merges at most once per move.
+- A move that changes nothing is not a turn and spawns nothing.
+- After each effective move, one new tile spawns in a random empty plot: 90% Seed (2), 10% Sprout (4).
+- Score adds each newly merged tile's face value. Best score persists in `localStorage` under `grove2048.best.v1`.
+- Reaching the **World Tree** (2048) wins (`won`) and offers **Keep playing** (`continue`).
+- Filling the island with no empty plots and no adjacent equal pairs ends the run (`lost`).
 
 ## Tiers
 
-| Tier | Face value | Model | Readout |
+| Tier | Face value | Tree | Silhouette & palette |
 | --- | --- | --- | --- |
-| 1 | 2 | Seed | tiny sprouting seed mound |
-| 2 | 4 | Sprout | short stem, first leaf pair |
-| 3 | 8 | Sapling | slim trunk, one small canopy |
-| 4 | 16 | Young Tree | taller, fuller single canopy |
-| 5 | 32 | Mature Tree | two-blob canopy |
-| 6 | 64 | Great Tree | broad trunk, three-blob canopy |
-| 7 | 128 | Grand Tree | layered canopy, visible branches |
-| 8 | 256 | Elder Tree | gnarled trunk, wide layered canopy |
-| 9 | 512 | Ancient Tree | massive, moss tones, multi-layer |
-| 10 | 1024 | Giant Sequoia | red-toned towering trunk |
-| 11 | 2048 | World Tree | glowing canopy + firefly particles, win |
+| 1 | 2 | Seed | Tiny sprouting seed mound with chartreuse tip |
+| 2 | 4 | Sprout | Short tender stem, first spring-green leaf pair |
+| 3 | 8 | Sapling | Slim pale-bark trunk, single faceted canopy |
+| 4 | 16 | Young Tree | Taller trunk with root flare, fuller emerald canopy |
+| 5 | 32 | Mature Tree | Forked trunk, two-blob forest canopy |
+| 6 | 64 | Great Tree | Broad buttressed trunk, three-blob deep-pine canopy |
+| 7 | 128 | Grand Tree | Visible angled branches, layered jade canopy |
+| 8 | 256 | Elder Tree | Gnarled twisting trunk, wide golden-olive layered crown |
+| 9 | 512 | Ancient Tree | Massive moss-draped trunk with base rocks, moss-teal crown |
+| 10 | 1024 | Giant Sequoia | Towering fluted redwood trunk, stacked conifer/bronze spire |
+| 11 | 2048 | World Tree | Luminous ivory-gold trunk, glowing canopy, orbiting fireflies |
 
-Face values stay the internal currency (scoring, HUD) but never appear on the board: models are the readout, distinguished by size, silhouette and hue. A hover label showing the tier name is allowed; numbers on tiles are not.
+Hovering a tree on desktop shows its tier name in a bottom pill (no numbers on the board).
 
-## Board, camera, controls
+## Controls
 
-- A floating grass island; the 4×4 plot grid sits on it as low-poly pedestal cells.
-- Camera: drag to orbit, wheel/pinch to zoom (same feel as 3D Minesweeper).
-- Move: arrow keys / WASD, touch swipe, or the on-screen d-pad (390-friendly). Direction is camera-relative — "up" pushes tiles away from the camera.
-- HUD: score + best, and a Menu (`Esc`) with Restart and How to play. Win and loss panels sit over the scene.
+| Action | Keyboard | Mouse / Touch | On-screen |
+| --- | --- | --- | --- |
+| Slide trees (camera-relative) | Arrow keys or `W`/`A`/`S`/`D` | Single-finger quick touch swipe | Bottom d-pad |
+| Orbit / zoom camera | — | Drag to orbit, wheel or pinch to zoom | — |
+| Inspect tree tier name | — | Hover any tree on desktop | Bottom pill |
+| Restart | `R` | — | **Restart** button (HUD / Menu) |
+| Menu & How to play | `Esc` | — | **Menu** button |
 
-## Game feel
+Moves are camera-relative: **up** always pushes trees away from the camera, snapped to the nearest grid axis.
 
-- Slide easing on every move; merge plays a grow pop with a small leaf burst; spawns drop in with a bounce.
-- World Tree win: gentle camera lift, fireflies, then the panel. Loss: a beat, then the panel.
-- All motion respects `prefers-reduced-motion`: animations shortened/damped, particles dropped.
+## Game feel & accessibility
 
-## Tech (house pattern — same as 3D Minesweeper)
+- Smooth slide easing on every move, merge growth pop with tinted low-poly leaf bursts, and drop-in bounce on new spawns.
+- World Tree win gently lifts the camera and releases a surge of golden fireflies before showing the win panel; loss pauses briefly before showing the end panel.
+- Respects `prefers-reduced-motion`: animations are shortened and damped, island bobbing and canopy wind sway stop, and particles are disabled.
 
-- Plain HTML/CSS/JS ES modules; Three.js vendored in `vendor/three/` (no npm, no build step).
-- Run: `python3 -m http.server 8080` → http://localhost:8080
-- Engine is pure JS (no DOM, no Three.js) in `src/engine.js`, so `node --test tests/` covers the rules.
-- Browser checks run through the debug hook; `?seed=N` makes the spawn sequence deterministic.
+## Project structure
 
-## Tests
+- `index.html`, `styles.css` — warm botanical glass HUD, responsive 390px/1440px layout, menu, win/loss dialogs
+- `src/tiers.js` — 11-tier progression metadata
+- `src/engine.js` — pure-JS 2048 engine (no DOM, no Three.js)
+- `src/scene.js` — Three.js renderer, portrait-aware camera framing, OrbitControls, sunlit sky & clouds
+- `src/trees.js` — procedural low-poly mesh generator for all 11 tiers
+- `src/board.js` — floating island, 16 plot pedestals, tile animation lifecycle, hover raycasting
+- `src/particles.js` — merge leaf bursts and World Tree fireflies
+- `src/main.js` — input wiring, localStorage best score, reduced motion, `window.__game` hook
+- `vendor/three/` — vendored Three.js ES module and `OrbitControls`
+- `tests/engine.test.mjs` — Node unit test suite for `src/engine.js`
+- `scripts/e2e.mjs` — Playwright end-to-end verification and screenshot script
 
-```
+## Tests & debug hook
+
+Run the pure-JS engine tests:
+
+```bash
 node --test tests/
 ```
 
-Engine coverage: legal moves, slide + merge, once-per-move rule, no-change move ≠ turn, 90/10 spawn mix, seeded determinism, scoring, win at 2048, loss detection, continue-after-win. The browser game is checked with Playwright through the read-mostly debug hook:
+Run the Playwright end-to-end suite (requires Playwright available in Node):
+
+```bash
+node scripts/e2e.mjs
+```
+
+Browser debug hook exposed on `window.__game`:
 
 ```js
 window.__game = {
-  state(),        // "ready" | "playing" | "won" | "continue" | "lost"
-  start(seed?),   // reset; a seed makes spawns deterministic
-  move(dir),      // "up" | "down" | "left" | "right" — grid-relative (the UI maps camera→grid)
-  grid(),         // 4×4 array of face values, 0 = empty
+  state(),            // "ready" | "playing" | "won" | "continue" | "lost"
+  start(seed?),       // reset; optional seed makes spawns deterministic
+  move(dir),          // "up" | "down" | "left" | "right" (grid-relative)
+  grid(),             // 4×4 array of face values, 0 = empty
   score(), best(),
+  setGrid(grid, opts?), // load a 4×4 grid for deterministic scenario checks
+  keepPlaying(),      // transition from "won" to "continue"
 }
 ```
-
-## Project layout
-
-- Main repo: this folder, branch `main` — planning docs only, no remote yet.
-- Worktrees: `/Users/AIDev/Projects/3D 2048-wt/<round>` — one per round, branch named after the round (Notion Learning Graph pattern). Round 1: `antigravity-r1`.

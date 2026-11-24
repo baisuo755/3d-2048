@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Grove — 3D 2048</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="icon" href="data:," />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "./vendor/three/three.module.js",
+          "three/addons/": "./vendor/three/addons/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div id="ui">
+      <header id="hud">
+        <div class="hud-left">
+          <div class="brand" aria-label="Grove">
+            <span class="brand-dot" aria-hidden="true"></span>
+            <span class="brand-name">Grove</span>
+          </div>
+          <div class="hud-readouts">
+            <span class="ro" role="group" aria-labelledby="lbl-score hud-score">
+              <span class="ro-l" id="lbl-score">score</span>
+              <span class="ro-v mono" id="hud-score">0</span>
+            </span>
+            <span class="ro" role="group" aria-labelledby="lbl-best hud-best">
+              <span class="ro-l" id="lbl-best">best</span>
+              <span class="ro-v mono" id="hud-best">0</span>
+            </span>
+          </div>
+        </div>
+        <div class="hud-right">
+          <button id="btn-restart" title="Restart (R)">Restart</button>
+          <button id="btn-menu" title="Menu (Esc)">Menu</button>
+        </div>
+      </header>
+
+      <div id="hover-pill" class="hover-pill" aria-live="polite" hidden>
+        <span class="hover-swatch" id="hover-swatch" aria-hidden="true"></span>
+        <span id="hover-name"></span>
+      </div>
+
+      <div class="dpad" role="group" aria-label="Slide trees">
+        <button class="dbtn" data-dir="up" aria-label="Slide up (away from camera)">&#9650;</button>
+        <button class="dbtn" data-dir="left" aria-label="Slide left">&#9664;</button>
+        <button class="dbtn" data-dir="down" aria-label="Slide down (toward camera)">&#9660;</button>
+        <button class="dbtn" data-dir="right" aria-label="Slide right">&#9654;</button>
+      </div>
+
+      <div id="menu" class="overlay" role="dialog" aria-modal="true" aria-labelledby="menu-title" hidden>
+        <div class="panel">
+          <div class="panel-head">
+            <h1 id="menu-title" tabindex="-1">Grove</h1>
+            <span class="panel-tag">3D 2048</span>
+          </div>
+          <div class="accent-bar" aria-hidden="true"></div>
+          <p class="lede">Slide trees across the floating island. Two identical trees merge and grow into the next tier. Grow the <strong>World Tree</strong> to win.</p>
+
+          <div class="menu-actions">
+            <button id="btn-resume" class="primary">Resume</button>
+            <button id="btn-menu-restart">Restart</button>
+          </div>
+
+          <section class="sec">
+            <h2>How to play</h2>
+            <ul class="help-list">
+              <li><b>Move</b>: Arrow keys, <code>WASD</code>, touch swipe, or the on-screen d-pad. Moves follow your camera angle (up pushes away from you).</li>
+              <li><b>Camera</b>: Drag to orbit, wheel or pinch to zoom. Hover any tree to see its name.</li>
+              <li><b>Rules</b>: Identical trees merge once per move. A move that changes nothing does not spend a turn.</li>
+            </ul>
+          </section>
+
+          <section class="sec">
+            <h2>Tree progression</h2>
+            <ol id="tier-legend" class="tier-legend"></ol>
+          </section>
+        </div>
+      </div>
+
+      <div id="endgame" class="overlay" role="dialog" aria-modal="true" aria-labelledby="end-title" hidden>
+        <div class="end-panel" id="end-panel">
+          <h2 class="end-badge" id="end-title">World Tree Grown</h2>
+          <p class="end-sub" id="end-sub">Your grove reached the World Tree.</p>
+          <div class="end-stats">
+            <div class="end-stat">
+              <span class="end-label">score</span>
+              <span class="end-val mono" id="end-score">0</span>
+            </div>
+            <div class="end-stat">
+              <span class="end-label">best</span>
+              <span class="end-val mono" id="end-best">0</span>
+            </div>
+            <div class="end-stat" id="end-highest-wrap">
+              <span class="end-label">tallest</span>
+              <span class="end-val" id="end-highest">World Tree</span>
+            </div>
+          </div>
+          <div class="end-actions">
+            <button id="btn-keep-playing" class="primary" hidden>Keep playing</button>
+            <button id="btn-play-again" class="primary">Play again</button>
+            <button id="btn-end-menu">Menu</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>
