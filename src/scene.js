@@ -1,5 +1,6 @@
-// Three.js scene setup: renderer, portrait-aware camera, orbit controls,
-// sunlit lighting, gradient sky dome, and drifting low-poly clouds.
+// Three.js scene setup: "Sunlit Sky-Sanctuary" diorama lighting, painter-style sky
+// dome with warm off-axis solar glow, multi-altitude sunlit clouds, portrait-aware
+// camera framing, and conflict-free OrbitControls touch mapping.
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -8,21 +9,21 @@ export function createScene(container) {
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.06;
+  renderer.toneMappingExposure = 1.08;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   container.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
-  const fogColor = new THREE.Color(0xaed4ec);
-  scene.fog = new THREE.FogExp2(fogColor, 0.0065);
+  const fogColor = new THREE.Color(0xadd5ee);
+  scene.fog = new THREE.FogExp2(fogColor, 0.0052);
 
-  const camera = new THREE.PerspectiveCamera(44, 1, 0.1, 320);
+  const camera = new THREE.PerspectiveCamera(44, 1, 0.1, 340);
 
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.target.set(0, 0.25, 0);
   controls.enableDamping = true;
-  controls.dampingFactor = 0.08;
+  controls.dampingFactor = 0.085;
   controls.enablePan = false;
   controls.minDistance = 6.2;
   controls.maxDistance = 28;
@@ -39,46 +40,49 @@ export function createScene(container) {
     controls.touches.TWO = THREE.TOUCH.DOLLY_ROTATE;
   }
 
-  // Warm sunlit botanical lighting: crisp sky + warm meadow bounce + golden sun.
-  const hemi = new THREE.HemisphereLight(0xdff2ff, 0x8ca684, 0.86);
+  // Sunlit sky-sanctuary lighting rig:
+  // Warm golden sun key + crisp sky/meadow hemisphere + cool azure rim + soft rock under-fill.
+  const hemi = new THREE.HemisphereLight(0xe4f4ff, 0x90ab82, 0.88);
   scene.add(hemi);
 
-  const sun = new THREE.DirectionalLight(0xfff1d4, 2.45);
-  sun.position.set(8.5, 14.5, 6.5);
+  const sun = new THREE.DirectionalLight(0xfff0cc, 2.55);
+  sun.position.set(9.5, 14.5, 6.2);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
-  const shadowSpan = 8.2;
+  const shadowSpan = 8.4;
   sun.shadow.camera.left = -shadowSpan;
   sun.shadow.camera.right = shadowSpan;
   sun.shadow.camera.top = shadowSpan;
   sun.shadow.camera.bottom = -shadowSpan;
   sun.shadow.camera.near = 2;
-  sun.shadow.camera.far = 36;
-  sun.shadow.bias = -0.00035;
-  sun.shadow.normalBias = 0.025;
+  sun.shadow.camera.far = 38;
+  sun.shadow.bias = -0.00032;
+  sun.shadow.normalBias = 0.024;
   scene.add(sun, sun.target);
 
-  // Cool sky rim light + soft sky under-fill so floating island cliffs stay sculpted.
-  const rim = new THREE.DirectionalLight(0xa4d0f5, 0.52);
-  rim.position.set(-9, 7, -8);
+  const rim = new THREE.DirectionalLight(0x9fd0f8, 0.58);
+  rim.position.set(-10, 7.5, -8.5);
   scene.add(rim);
 
-  const underFill = new THREE.DirectionalLight(0x9ec9e8, 0.55);
-  underFill.position.set(4, -10, 8);
+  const underFill = new THREE.DirectionalLight(0x9acae8, 0.62);
+  underFill.position.set(4.5, -11, 8.5);
   scene.add(underFill);
 
-  // Gradient sunlit azure sky dome: cool airy blue behind the island so the
-  // golden World Tree and fireflies pop cleanly without washing into the horizon.
-  const skyGeo = new THREE.SphereGeometry(220, 32, 18);
+  // Painterly cerulean sky dome with a soft warm solar bloom off to the right
+  // (keeps cool crisp azure right behind the golden World Tree so it pops cleanly).
+  const sunDirNorm = new THREE.Vector3(0.72, 0.34, -0.60).normalize();
+  const skyGeo = new THREE.SphereGeometry(230, 36, 20);
   const skyMat = new THREE.ShaderMaterial({
     side: THREE.BackSide,
     depthWrite: false,
     fog: false,
     uniforms: {
-      uZenith: { value: new THREE.Color(0x2d6da8) },
-      uMid: { value: new THREE.Color(0x6db0dc) },
-      uHorizon: { value: new THREE.Color(0xc2e1f4) },
-      uBottom: { value: new THREE.Color(0x6a9cc0) },
+      uZenith: { value: new THREE.Color(0x2565a8) },
+      uMid: { value: new THREE.Color(0x64acd9) },
+      uHorizon: { value: new THREE.Color(0xc5e4f5) },
+      uBottom: { value: new THREE.Color(0x5b8fb8) },
+      uSunGlow: { value: new THREE.Color(0xffe9bf) },
+      uSunDir: { value: sunDirNorm },
     },
     vertexShader: `
       varying vec3 vPos;
@@ -92,18 +96,25 @@ export function createScene(container) {
       uniform vec3 uMid;
       uniform vec3 uHorizon;
       uniform vec3 uBottom;
+      uniform vec3 uSunGlow;
+      uniform vec3 uSunDir;
       varying vec3 vPos;
       void main() {
-        float h = normalize(vPos).y;
+        vec3 dir = normalize(vPos);
+        float h = dir.y;
         vec3 col;
         if (h > -0.16) {
           float up = clamp((h + 0.16) / 1.16, 0.0, 1.0);
-          vec3 low = mix(uHorizon, uMid, smoothstep(0.0, 0.36, up));
+          vec3 low = mix(uHorizon, uMid, smoothstep(0.0, 0.34, up));
           col = mix(low, uZenith, pow(up, 0.72));
         } else {
-          float dn = clamp((-h - 0.16) / 0.64, 0.0, 1.0);
+          float dn = clamp((-h - 0.16) / 0.66, 0.0, 1.0);
           col = mix(uHorizon, uBottom, smoothstep(0.0, 1.0, dn));
         }
+        // Subtle warm solar halo off to one flank for atmospheric depth.
+        float sunDot = max(dot(dir, uSunDir), 0.0);
+        float halo = pow(sunDot, 7.0) * 0.24 + pow(sunDot, 36.0) * 0.28;
+        col = mix(col, uSunGlow, clamp(halo, 0.0, 0.55));
         gl_FragColor = vec4(col, 1.0);
       }
     `,
@@ -111,38 +122,56 @@ export function createScene(container) {
   const sky = new THREE.Mesh(skyGeo, skyMat);
   scene.add(sky);
 
-  // Distant low-poly clouds positioned on the flanks (never clipped dead-center
-  // at the top edge or colliding with the mobile HUD), with warm underside bounce.
+  // Two-altitude sunlit cumulus clouds: upper sunlit puffs + lower distant cloud sea
+  // positioned gracefully on the flanks so none clip top-center or hide behind HUD.
   const cloudGroup = new THREE.Group();
-  const cloudMat = new THREE.MeshStandardMaterial({
-    color: 0xffffff,
-    emissive: 0xdceeff,
-    emissiveIntensity: 0.24,
-    roughness: 0.92,
+  const cloudUpperMat = new THREE.MeshStandardMaterial({
+    color: 0xfffdf8,
+    emissive: 0xdeeeff,
+    emissiveIntensity: 0.3,
+    roughness: 0.9,
     metalness: 0.0,
     flatShading: true,
     transparent: true,
-    opacity: 0.86,
+    opacity: 0.9,
+  });
+  const cloudLowerMat = new THREE.MeshStandardMaterial({
+    color: 0xe6f3fc,
+    emissive: 0xb7daf2,
+    emissiveIntensity: 0.22,
+    roughness: 0.94,
+    metalness: 0.0,
+    flatShading: true,
+    transparent: true,
+    opacity: 0.52,
   });
   const cloudPuffGeo = new THREE.IcosahedronGeometry(1, 1);
   const clouds = [];
   const cloudSpecs = [
-    { angle: 0.35, radius: 46, y: 1.8, scale: 2.3, speed: 0.009 },
-    { angle: 1.55, radius: 52, y: 2.6, scale: 2.7, speed: 0.007 },
-    { angle: 2.75, radius: 48, y: -2.6, scale: 2.4, speed: 0.01 },
-    { angle: 4.55, radius: 52, y: -2.4, scale: 2.5, speed: 0.006 },
-    { angle: 5.35, radius: 46, y: -1.8, scale: 2.2, speed: 0.008 },
+    // Upper sunlit flank clouds
+    { angle: 0.32, radius: 46, y: 1.6, scale: 2.2, speed: 0.008, lower: false },
+    { angle: 1.52, radius: 52, y: 2.3, scale: 2.6, speed: 0.006, lower: false },
+    { angle: 2.72, radius: 48, y: -2.4, scale: 2.3, speed: 0.009, lower: false },
+    { angle: 4.52, radius: 54, y: -2.0, scale: 2.5, speed: 0.006, lower: false },
+    { angle: 5.32, radius: 46, y: -1.6, scale: 2.1, speed: 0.007, lower: false },
+    // Lower distant misty cloud bank deep beneath the sanctuary for vertical scale
+    { angle: 0.9, radius: 34, y: -11.5, scale: 3.6, speed: 0.005, lower: true },
+    { angle: 2.4, radius: 38, y: -13.0, scale: 4.2, speed: 0.004, lower: true },
+    { angle: 4.1, radius: 36, y: -12.0, scale: 3.8, speed: 0.005, lower: true },
+    { angle: 5.7, radius: 40, y: -13.5, scale: 4.0, speed: 0.004, lower: true },
   ];
   for (const spec of cloudSpecs) {
     const cluster = new THREE.Group();
+    const mat = spec.lower ? cloudLowerMat : cloudUpperMat;
     const offsets = [
-      [0, 0, 0, 1.0, 0.52, 0.78],
-      [-0.95, -0.08, 0.2, 0.72, 0.42, 0.65],
-      [0.95, -0.06, -0.15, 0.78, 0.44, 0.68],
-      [0.2, 0.25, 0.1, 0.62, 0.38, 0.6],
+      [0, 0, 0, 1.05, 0.48, 0.78],
+      [-0.95, -0.08, 0.18, 0.74, 0.38, 0.64],
+      [0.95, -0.06, -0.14, 0.80, 0.40, 0.66],
+      [0.18, 0.24, 0.08, 0.64, 0.36, 0.58],
+      [-0.42, 0.16, -0.18, 0.52, 0.32, 0.50],
     ];
     for (const [ox, oy, oz, sx, sy, sz] of offsets) {
-      const puff = new THREE.Mesh(cloudPuffGeo, cloudMat);
+      const puff = new THREE.Mesh(cloudPuffGeo, mat);
       puff.position.set(ox, oy, oz);
       puff.scale.set(sx, sy, sz);
       cluster.add(puff);
@@ -167,8 +196,8 @@ export function createScene(container) {
     const h = Math.max(container.clientHeight, 1);
     const aspect = w / h;
     lastAspect = aspect;
-    // Pull back on narrow portrait viewports (e.g. 390x844) so all 8 corners
-    // of the floating island sit inside the frame with generous sky margin.
+    // Pull back on narrow portrait viewports (e.g. 390x844) so the entire
+    // floating island sits comfortably inside the frame with generous sky margin.
     const portraitScale = aspect < 1 ? Math.min(2.26, 1.24 / Math.max(aspect, 0.44)) : 1.0;
     const baseX = 8.2;
     const baseY = 6.9;
@@ -188,7 +217,6 @@ export function createScene(container) {
     renderer.setSize(w, h);
     camera.aspect = newAspect;
     camera.updateProjectionMatrix();
-    // Re-frame gently if switching between portrait and landscape breakpoints.
     if ((lastAspect < 1) !== (newAspect < 1)) {
       frameDefault(true);
     }
@@ -224,7 +252,8 @@ export function createScene(container) {
       skyGeo.dispose();
       skyMat.dispose();
       cloudPuffGeo.dispose();
-      cloudMat.dispose();
+      cloudUpperMat.dispose();
+      cloudLowerMat.dispose();
       controls.dispose();
       renderer.dispose();
       renderer.domElement.remove();

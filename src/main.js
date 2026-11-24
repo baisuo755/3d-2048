@@ -73,6 +73,8 @@ motionMq.addEventListener('change', (e) => {
   particles.setReducedMotion(reducedMotion);
   if (reducedMotion) {
     winLift = 0;
+    camKick.set(0, 0, 0);
+    winGlowEl.classList.remove('active');
   }
 });
 
@@ -92,7 +94,9 @@ function triggerHaptic(pattern) {
 // ------------------------------------------------------------ DOM refs
 
 const $ = (id) => document.getElementById(id);
+const winGlowEl = $('win-glow');
 const hudScore = $('hud-score');
+const hudDelta = $('hud-delta');
 const hudBest = $('hud-best');
 const btnRestart = $('btn-restart');
 const btnMenu = $('btn-menu');
@@ -142,6 +146,7 @@ let hoveredCell = null;
 let tapInspectTimer = 0;
 let swipeHideTimer = 0;
 let touchMode = 'slide'; // "slide" | "orbit"
+const camKick = new THREE.Vector3(); // subtle damped camera micro-move impulse
 
 function setTouchMode(mode) {
   touchMode = mode === 'orbit' ? 'orbit' : 'slide';
@@ -263,12 +268,24 @@ function showEndPanel(kind) {
   hideSwipeIndicator();
 }
 
+function showScoreDelta(delta) {
+  if (reducedMotion || delta <= 0) return;
+  hudDelta.textContent = `+${delta}`;
+  hudDelta.classList.remove('pop');
+  hudScore.classList.remove('bump');
+  void hudDelta.offsetWidth;
+  hudDelta.classList.add('pop');
+  hudScore.classList.add('bump');
+}
+
 function startNewGame(seed) {
   clearPendingEnd();
   clearTapInspect();
   hideSwipeIndicator();
   stopDpadRepeat();
   winLift = 0;
+  camKick.set(0, 0, 0);
+  winGlowEl.classList.remove('active');
   particles.clear();
   endgameEl.hidden = true;
   setMenuOpen(false);
@@ -284,6 +301,8 @@ function loadCustomGrid(grid4x4, opts = {}) {
   hideSwipeIndicator();
   stopDpadRepeat();
   winLift = 0;
+  camKick.set(0, 0, 0);
+  winGlowEl.classList.remove('active');
   particles.clear();
   endgameEl.hidden = true;
   setMenuOpen(false);
@@ -303,6 +322,7 @@ function continueAfterWin() {
   if (!game || game.state !== 'won') return game ? game.state : 'ready';
   clearPendingEnd();
   winLift = 0;
+  winGlowEl.classList.remove('active');
   endgameEl.hidden = true;
   const nextState = game.keepPlaying();
   updateHud();
@@ -315,17 +335,35 @@ function continueAfterWin() {
 function performGridMove(dir) {
   if (!game) return { moved: false };
   const result = game.move(dir);
-  if (!result.moved) return result;
+  if (!result.moved) {
+    if (game.state === 'ready' || game.state === 'playing' || game.state === 'continue') {
+      board.triggerBlockedBump(dir);
+    }
+    return result;
+  }
 
   clearTapInspect();
   board.applyMove(result, game.tiles());
   updateHud();
+  if (result.scoreDelta > 0) {
+    showScoreDelta(result.scoreDelta);
+  }
+
+  // Subtle camera micro-move impulse in the slide direction + soft impact dip on larger merges.
+  if (!reducedMotion) {
+    const dx = dir === 'right' ? 1 : dir === 'left' ? -1 : 0;
+    const dz = dir === 'down' ? 1 : dir === 'up' ? -1 : 0;
+    const maxMerged = result.merges.reduce((m, x) => Math.max(m, x.value), 0);
+    const kickScale = maxMerged >= 256 ? 0.19 : maxMerged >= 32 ? 0.14 : 0.09;
+    camKick.set(dx * kickScale, maxMerged >= 64 ? -0.11 : -0.03, dz * kickScale);
+  }
 
   if (result.wonNow) {
     triggerHaptic([20, 30, 30, 30, 45]);
     clearPendingEnd();
-    winLift = reducedMotion ? 0 : 1.15;
-    const delay = reducedMotion ? 260 : 1050;
+    winLift = reducedMotion ? 0 : 1.45;
+    if (!reducedMotion) winGlowEl.classList.add('active');
+    const delay = reducedMotion ? 260 : 1280;
     endTimer = setTimeout(() => {
       endTimer = 0;
       if (game && game.state === 'won') showEndPanel('won');
@@ -612,18 +650,28 @@ function frame() {
   if (winLift > 0) {
     winLift = Math.max(0, winLift - dt);
     const wtPos = board.getWorldTreeWorldPos();
-    targetGoal.set(wtPos.x * 0.25, view.defaultTarget.y + 0.85, wtPos.z * 0.25);
+    targetGoal.set(wtPos.x * 0.34, view.defaultTarget.y + 0.95, wtPos.z * 0.34);
   } else {
     targetGoal.copy(view.defaultTarget);
   }
-  view.controls.target.lerp(targetGoal, 1 - Math.exp(-4.5 * dt));
+
+  view.controls.target.lerp(targetGoal, 1 - Math.exp(-5.2 * dt));
   view.controls.update();
 
   view.tick(dt, reducedMotion);
   board.tick(dt, elapsed);
   particles.tick(dt, elapsed);
 
-  view.renderer.render(view.scene, view.camera);
+  // Apply damped camera micro-move around render only so it never fights OrbitControls.
+  if (!reducedMotion && camKick.lengthSq() > 1e-6) {
+    camKick.multiplyScalar(Math.exp(-13 * dt));
+    view.camera.position.add(camKick);
+    view.renderer.render(view.scene, view.camera);
+    view.camera.position.sub(camKick);
+  } else {
+    camKick.set(0, 0, 0);
+    view.renderer.render(view.scene, view.camera);
+  }
   requestAnimationFrame(frame);
 }
 

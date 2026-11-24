@@ -25,6 +25,25 @@ canvas {
 
 /* ------------------------------------------------------------------ UI Layer */
 
+.win-glow {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 8;
+  opacity: 0;
+  background: radial-gradient(
+    circle at 50% 44%,
+    rgba(255, 224, 128, 0) 34%,
+    rgba(255, 206, 92, 0.28) 78%,
+    rgba(255, 184, 64, 0.42) 100%
+  );
+  transition: opacity 420ms ease;
+}
+
+.win-glow.active {
+  opacity: 1;
+}
+
 #ui {
   position: fixed;
   inset: 0;
@@ -148,6 +167,61 @@ canvas {
   flex-direction: column;
   gap: 1px;
   min-width: 46px;
+}
+
+.ro-score {
+  position: relative;
+}
+
+.score-delta {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 12px);
+  font-size: 13px;
+  font-weight: 800;
+  color: #ffe388;
+  text-shadow: 0 2px 8px rgba(15, 28, 20, 0.72);
+  pointer-events: none;
+  opacity: 0;
+  white-space: nowrap;
+}
+
+.score-delta.pop {
+  animation: delta-rise 680ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes delta-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(4px) scale(0.88);
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(0px) scale(1.06);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.96);
+  }
+}
+
+#hud-score.bump {
+  animation: score-bump 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes score-bump {
+  0% {
+    transform: scale(1);
+    color: #faf6eb;
+  }
+  45% {
+    transform: scale(1.16);
+    color: #ffe388;
+  }
+  100% {
+    transform: scale(1);
+    color: #faf6eb;
+  }
 }
 
 .ro + .ro {
@@ -783,8 +857,14 @@ body.has-touch .touch-tools {
   :where(#ui button),
   .end-panel,
   .swipe-indicator,
-  .swipe-arrow {
+  .swipe-arrow,
+  .win-glow,
+  .score-delta.pop,
+  #hud-score.bump {
     transition: none;
     animation: none;
+  }
+  .score-delta.pop {
+    opacity: 0;
   }
 }

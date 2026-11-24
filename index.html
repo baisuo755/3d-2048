@@ -16,6 +16,7 @@
     </script>
   </head>
   <body>
+    <div id="win-glow" class="win-glow" aria-hidden="true"></div>
     <div id="ui">
       <header id="hud">
         <div class="hud-left">
@@ -24,9 +25,10 @@
             <span class="brand-name">Grove</span>
           </div>
           <div class="hud-readouts">
-            <span class="ro" role="group" aria-labelledby="lbl-score hud-score">
+            <span class="ro ro-score" role="group" aria-labelledby="lbl-score hud-score">
               <span class="ro-l" id="lbl-score">score</span>
               <span class="ro-v mono" id="hud-score">0</span>
+              <span class="score-delta mono" id="hud-delta" aria-hidden="true"></span>
             </span>
             <span class="ro" role="group" aria-labelledby="lbl-best hud-best">
               <span class="ro-l" id="lbl-best">best</span>

@@ -283,7 +283,7 @@ try {
   const shotShowcase1440 = path.join(SHOT_DIR, 'showcase-all-tiers-1440.png');
   await page.screenshot({ path: shotShowcase1440 });
 
-  // 4. Forced win reaching the World Tree (2048) + Keep playing (continue)
+  // 4. Forced win reaching the World Tree (2048) + win-moment reveal + Keep playing (continue)
   await page.evaluate(() => {
     window.__game.setGrid(
       [
@@ -296,6 +296,12 @@ try {
     );
     window.__game.move('left');
   });
+
+  // Capture the World Tree reveal moment (fireflies, golden shockwave, vignette glow,
+  // elevated camera) BEFORE the win panel appears.
+  await page.waitForTimeout(560);
+  const shotWinMoment1440 = path.join(SHOT_DIR, 'win-moment-1440.png');
+  await page.screenshot({ path: shotWinMoment1440 });
 
   await page.waitForSelector('#endgame:not([hidden])', { timeout: 3000 });
   const winState = await page.evaluate(() => ({
@@ -569,6 +575,7 @@ try {
   console.log('SCREENSHOTS:', JSON.stringify([
     shotGameplay1440,
     shotShowcase1440,
+    shotWinMoment1440,
     shotWin1440,
     shotLoss1440,
     shotMenu1440,
