@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Grove — 3D 2048</title>
     <link rel="stylesheet" href="styles.css" />
     <link rel="icon" href="data:," />
@@ -45,11 +45,27 @@
         <span id="hover-name"></span>
       </div>
 
-      <div class="dpad" role="group" aria-label="Slide trees">
-        <button class="dbtn" data-dir="up" aria-label="Slide up (away from camera)">&#9650;</button>
-        <button class="dbtn" data-dir="left" aria-label="Slide left">&#9664;</button>
-        <button class="dbtn" data-dir="down" aria-label="Slide down (toward camera)">&#9660;</button>
-        <button class="dbtn" data-dir="right" aria-label="Slide right">&#9654;</button>
+      <div id="swipe-indicator" class="swipe-indicator" aria-hidden="true" hidden>
+        <span class="swipe-arrow" id="swipe-arrow">&#9650;</span>
+      </div>
+
+      <div class="controls-dock">
+        <div class="dpad" role="group" aria-label="Slide trees">
+          <button class="dbtn" data-dir="up" aria-label="Slide up (away from camera)">&#9650;</button>
+          <button class="dbtn" data-dir="left" aria-label="Slide left">&#9664;</button>
+          <span class="dpad-center" aria-hidden="true"></span>
+          <button class="dbtn" data-dir="down" aria-label="Slide down (toward camera)">&#9660;</button>
+          <button class="dbtn" data-dir="right" aria-label="Slide right">&#9654;</button>
+        </div>
+
+        <div class="touch-tools" aria-label="Touch camera and gesture controls">
+          <div class="mode-switch" role="group" aria-label="Touch drag mode">
+            <button id="btn-mode-slide" class="mode-btn active" data-mode="slide" aria-pressed="true">Slide</button>
+            <button id="btn-mode-orbit" class="mode-btn" data-mode="orbit" aria-pressed="false">Orbit</button>
+          </div>
+          <button id="btn-reset-view" class="reset-view-btn" aria-label="Reset camera view">Reset view</button>
+          <span class="gesture-hint" id="gesture-hint">Swipe to slide · 2-finger orbit</span>
+        </div>
       </div>
 
       <div id="menu" class="overlay" role="dialog" aria-modal="true" aria-labelledby="menu-title" hidden>
@@ -69,9 +85,9 @@
           <section class="sec">
             <h2>How to play</h2>
             <ul class="help-list">
-              <li><b>Move</b>: Arrow keys, <code>WASD</code>, touch swipe, or the on-screen d-pad. Moves follow your camera angle (up pushes away from you).</li>
-              <li><b>Camera</b>: Drag to orbit, wheel or pinch to zoom. Hover any tree to see its name.</li>
-              <li><b>Rules</b>: Identical trees merge once per move. A move that changes nothing does not spend a turn.</li>
+              <li><b>Touch</b>: Swipe anywhere with one finger to slide trees; drag or pinch with two fingers to orbit and zoom. Toggle <b>Orbit</b> for one-handed camera rotation, or hold the d-pad to repeat moves.</li>
+              <li><b>Desktop</b>: Arrow keys or <code>WASD</code> slide trees; drag to orbit and scroll to zoom. Hover (or tap on touch) any tree to see its name.</li>
+              <li><b>Rules</b>: Moves follow your camera angle (up pushes away from you). Identical trees merge once per move; no-change moves do not spend a turn.</li>
             </ul>
           </section>
 

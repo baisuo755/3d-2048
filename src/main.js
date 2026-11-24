@@ -1,12 +1,14 @@
 // Grove (3D 2048) entry point: wires pure-JS engine, 3D floating island scene,
-// camera-relative controls (keyboard, touch swipe, d-pad), HUD, persistence,
-// prefers-reduced-motion, and window.__game debug hook.
+// camera-relative controls (keyboard, conflict-free 1-finger touch swipe +
+// 2-finger orbit/pinch + Slide/Orbit mode toggle + hold-to-repeat d-pad),
+// HUD, persistence, prefers-reduced-motion, and window.__game debug hook.
 
 import * as THREE from 'three';
 import { createGame, TIERS, getTierInfo } from './engine.js';
 import { createScene } from './scene.js';
 import { createParticles } from './particles.js';
 import { createBoard } from './board.js';
+import { cameraBasisToGridDir, createSwipeRecognizer } from './touch.js';
 
 // ------------------------------------------------------------ Persistence
 
@@ -46,6 +48,12 @@ function resolveSeed(explicitSeed) {
   return (Math.random() * 0x7fffffff) | 0;
 }
 
+// ------------------------------------------------------------ Touch capability
+
+if ((navigator.maxTouchPoints && navigator.maxTouchPoints > 0) || 'ontouchstart' in window) {
+  document.body.classList.add('has-touch');
+}
+
 // ------------------------------------------------------------ Scene & Board
 
 const view = createScene(document.body);
@@ -68,6 +76,19 @@ motionMq.addEventListener('change', (e) => {
   }
 });
 
+// ------------------------------------------------------------ Haptics (optional)
+
+function triggerHaptic(pattern) {
+  if (reducedMotion) return;
+  try {
+    if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+      navigator.vibrate(pattern);
+    }
+  } catch {
+    /* ignore unsupported / blocked vibrate */
+  }
+}
+
 // ------------------------------------------------------------ DOM refs
 
 const $ = (id) => document.getElementById(id);
@@ -84,6 +105,12 @@ const tierLegend = $('tier-legend');
 const hoverPill = $('hover-pill');
 const hoverSwatch = $('hover-swatch');
 const hoverName = $('hover-name');
+const swipeIndicator = $('swipe-indicator');
+
+const btnModeSlide = $('btn-mode-slide');
+const btnModeOrbit = $('btn-mode-orbit');
+const btnResetView = $('btn-reset-view');
+const gestureHint = $('gesture-hint');
 
 const endgameEl = $('endgame');
 const endPanel = $('end-panel');
@@ -112,6 +139,24 @@ let menuOpen = false;
 let endTimer = 0;
 let winLift = 0; // gentle camera target lift seconds on World Tree win
 let hoveredCell = null;
+let tapInspectTimer = 0;
+let swipeHideTimer = 0;
+let touchMode = 'slide'; // "slide" | "orbit"
+
+function setTouchMode(mode) {
+  touchMode = mode === 'orbit' ? 'orbit' : 'slide';
+  view.setTouchMode(touchMode);
+  swipeRecognizer.resetAll();
+  hideSwipeIndicator();
+  const isSlide = touchMode === 'slide';
+  btnModeSlide.classList.toggle('active', isSlide);
+  btnModeSlide.setAttribute('aria-pressed', String(isSlide));
+  btnModeOrbit.classList.toggle('active', !isSlide);
+  btnModeOrbit.setAttribute('aria-pressed', String(!isSlide));
+  gestureHint.textContent = isSlide
+    ? 'Swipe to slide · 2-finger orbit'
+    : 'Drag to orbit · pinch zoom';
+}
 
 function updateHud() {
   if (!game) return;
@@ -140,6 +185,13 @@ function updateHoverLabel() {
   hoverPill.hidden = false;
 }
 
+function clearTapInspect() {
+  if (tapInspectTimer) {
+    clearTimeout(tapInspectTimer);
+    tapInspectTimer = 0;
+  }
+}
+
 function clearPendingEnd() {
   if (endTimer) {
     clearTimeout(endTimer);
@@ -147,10 +199,43 @@ function clearPendingEnd() {
   }
 }
 
+function showSwipeIndicator(x, y, dir, committed = false, progress = 1) {
+  if (swipeHideTimer) {
+    clearTimeout(swipeHideTimer);
+    swipeHideTimer = 0;
+  }
+  swipeIndicator.hidden = false;
+  swipeIndicator.dataset.dir = dir;
+  swipeIndicator.classList.toggle('committed', committed);
+  swipeIndicator.style.left = `${Math.round(x)}px`;
+  swipeIndicator.style.top = `${Math.round(y)}px`;
+  const scale = committed ? 1.12 : 0.86 + 0.2 * progress;
+  swipeIndicator.style.transform = reducedMotion ? 'scale(1)' : `scale(${scale.toFixed(2)})`;
+  if (committed) {
+    swipeHideTimer = setTimeout(() => {
+      swipeHideTimer = 0;
+      swipeIndicator.hidden = true;
+      swipeIndicator.classList.remove('committed');
+    }, reducedMotion ? 90 : 180);
+  }
+}
+
+function hideSwipeIndicator() {
+  if (swipeHideTimer) {
+    clearTimeout(swipeHideTimer);
+    swipeHideTimer = 0;
+  }
+  swipeIndicator.hidden = true;
+  swipeIndicator.classList.remove('committed');
+}
+
 function setMenuOpen(open) {
   menuOpen = Boolean(open);
   menuEl.hidden = !menuOpen;
   if (menuOpen) {
+    clearTapInspect();
+    hideSwipeIndicator();
+    stopDpadRepeat();
     hoverPill.hidden = true;
     board.setHover(null);
     menuTitle.focus({ preventScroll: true });
@@ -174,10 +259,15 @@ function showEndPanel(kind) {
   endgameEl.hidden = false;
   hoverPill.hidden = true;
   board.setHover(null);
+  stopDpadRepeat();
+  hideSwipeIndicator();
 }
 
 function startNewGame(seed) {
   clearPendingEnd();
+  clearTapInspect();
+  hideSwipeIndicator();
+  stopDpadRepeat();
   winLift = 0;
   particles.clear();
   endgameEl.hidden = true;
@@ -190,6 +280,9 @@ function startNewGame(seed) {
 
 function loadCustomGrid(grid4x4, opts = {}) {
   clearPendingEnd();
+  clearTapInspect();
+  hideSwipeIndicator();
+  stopDpadRepeat();
   winLift = 0;
   particles.clear();
   endgameEl.hidden = true;
@@ -224,10 +317,12 @@ function performGridMove(dir) {
   const result = game.move(dir);
   if (!result.moved) return result;
 
+  clearTapInspect();
   board.applyMove(result, game.tiles());
   updateHud();
 
   if (result.wonNow) {
+    triggerHaptic([20, 30, 30, 30, 45]);
     clearPendingEnd();
     winLift = reducedMotion ? 0 : 1.15;
     const delay = reducedMotion ? 260 : 1050;
@@ -236,12 +331,15 @@ function performGridMove(dir) {
       if (game && game.state === 'won') showEndPanel('won');
     }, delay);
   } else if (result.lostNow) {
+    triggerHaptic([35, 40, 35]);
     clearPendingEnd();
     const delay = reducedMotion ? 220 : 620;
     endTimer = setTimeout(() => {
       endTimer = 0;
       if (game && game.state === 'lost') showEndPanel('lost');
     }, delay);
+  } else if (result.merges && result.merges.length > 0) {
+    triggerHaptic(14);
   }
 
   return result;
@@ -249,8 +347,6 @@ function performGridMove(dir) {
 
 // ------------------------------------------------ Camera-relative mapping
 
-// Maps a screen-relative move ("up" = away from camera, "right" = camera right)
-// onto the nearest grid-relative direction ("up" = -Z, "down" = +Z, "left" = -X, "right" = +X).
 function cameraDirToGridDir(inputDir) {
   view.camera.updateMatrixWorld();
   const m = view.camera.matrixWorld.elements;
@@ -263,34 +359,17 @@ function cameraDirToGridDir(inputDir) {
     fx = m[4];
     fz = m[6];
   }
-  // Camera right projected onto XZ plane: +X axis of camera world matrix.
   const rx = m[0];
   const rz = m[2];
-
-  let vx = fx;
-  let vz = fz;
-  if (inputDir === 'down') {
-    vx = -fx;
-    vz = -fz;
-  } else if (inputDir === 'right') {
-    vx = rx;
-    vz = rz;
-  } else if (inputDir === 'left') {
-    vx = -rx;
-    vz = -rz;
-  }
-
-  if (Math.abs(vx) >= Math.abs(vz)) {
-    return vx >= 0 ? 'right' : 'left';
-  }
-  return vz >= 0 ? 'down' : 'up';
+  return cameraBasisToGridDir(fx, fz, rx, rz, inputDir);
 }
 
 function handleUserMove(screenDir) {
-  if (menuOpen || !endgameEl.hidden) return;
-  if (!game || game.state === 'won' || game.state === 'lost') return;
+  if (menuOpen || !endgameEl.hidden) return false;
+  if (!game || game.state === 'won' || game.state === 'lost') return false;
   const gridDir = cameraDirToGridDir(screenDir);
-  performGridMove(gridDir);
+  const res = performGridMove(gridDir);
+  return Boolean(res.moved);
 }
 
 // ------------------------------------------------------------ Input wiring
@@ -326,67 +405,141 @@ window.addEventListener('keydown', (e) => {
   }
 });
 
-// On-screen D-pad (390-friendly, works for mouse and touch).
+// On-screen D-pad: immediate fire on press + hold-to-repeat (thumb-friendly fallback).
+let dpadDelayTimer = 0;
+let dpadRepeatTimer = 0;
+let dpadActiveBtn = null;
+
+function stopDpadRepeat() {
+  if (dpadDelayTimer) {
+    clearTimeout(dpadDelayTimer);
+    dpadDelayTimer = 0;
+  }
+  if (dpadRepeatTimer) {
+    clearInterval(dpadRepeatTimer);
+    dpadRepeatTimer = 0;
+  }
+  if (dpadActiveBtn) {
+    dpadActiveBtn.classList.remove('pressed');
+    dpadActiveBtn = null;
+  }
+}
+
 for (const btn of dpadEl.querySelectorAll('[data-dir]')) {
-  btn.addEventListener('click', (e) => {
+  const dir = btn.dataset.dir;
+  btn.addEventListener('pointerdown', (e) => {
     e.preventDefault();
-    btn.blur();
-    handleUserMove(btn.dataset.dir);
+    stopDpadRepeat();
+    dpadActiveBtn = btn;
+    btn.classList.add('pressed');
+    try {
+      btn.setPointerCapture(e.pointerId);
+    } catch {
+      /* ignore synthetic events without active pointer */
+    }
+    handleUserMove(dir);
+    dpadDelayTimer = setTimeout(() => {
+      dpadDelayTimer = 0;
+      dpadRepeatTimer = setInterval(() => {
+        if (menuOpen || !endgameEl.hidden || !game || game.state === 'won' || game.state === 'lost') {
+          stopDpadRepeat();
+          return;
+        }
+        handleUserMove(dir);
+      }, 170);
+    }, 310);
+  });
+
+  const endPress = () => {
+    if (dpadActiveBtn === btn) stopDpadRepeat();
+  };
+  btn.addEventListener('pointerup', endPress);
+  btn.addEventListener('pointercancel', endPress);
+  btn.addEventListener('lostpointercapture', endPress);
+  btn.addEventListener('contextmenu', (e) => e.preventDefault());
+
+  // Accessible keyboard activation (Enter/Space on focused button).
+  btn.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleUserMove(dir);
+    }
   });
 }
 
-// Touch swipe on the canvas: crisp single-finger flick moves trees;
-// slow drag orbits and two-finger pinch zooms via OrbitControls.
-const activeTouches = new Set();
-let swipeStart = null;
+window.addEventListener('blur', stopDpadRepeat);
+
+// ------------------------------------------------ First-class Touch Swipe
+
 const canvas = view.renderer.domElement;
+const swipeRecognizer = createSwipeRecognizer();
+const raycaster = new THREE.Raycaster();
+const pointerNdc = new THREE.Vector2();
+
+function inspectAtClientPoint(clientX, clientY) {
+  const rect = canvas.getBoundingClientRect();
+  pointerNdc.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+  pointerNdc.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(pointerNdc, view.camera);
+  return board.pickCell(raycaster);
+}
 
 canvas.addEventListener('pointerdown', (e) => {
   if (e.pointerType !== 'touch') return;
-  activeTouches.add(e.pointerId);
-  if (activeTouches.size === 1) {
-    swipeStart = {
-      id: e.pointerId,
-      x: e.clientX,
-      y: e.clientY,
-      t: performance.now(),
-    };
-  } else {
-    swipeStart = null;
+  document.body.classList.add('has-touch');
+  if (menuOpen || !endgameEl.hidden) return;
+  const ev = swipeRecognizer.down(e.pointerId, e.clientX, e.clientY, performance.now(), touchMode);
+  if (ev.type === 'cancel') {
+    hideSwipeIndicator();
+  }
+});
+
+canvas.addEventListener('pointermove', (e) => {
+  if (e.pointerType !== 'touch') return;
+  if (menuOpen || !endgameEl.hidden) return;
+  const ev = swipeRecognizer.move(e.pointerId, e.clientX, e.clientY, touchMode);
+  if (ev.type === 'preview') {
+    showSwipeIndicator(ev.startX + ev.dx * 0.55, ev.startY + ev.dy * 0.55, ev.dir, false, ev.progress);
+  } else if (ev.type === 'commit') {
+    showSwipeIndicator(ev.startX + ev.dx * 0.65, ev.startY + ev.dy * 0.65, ev.dir, true, 1);
+    handleUserMove(ev.dir);
   }
 });
 
 canvas.addEventListener('pointerup', (e) => {
   if (e.pointerType !== 'touch') return;
-  activeTouches.delete(e.pointerId);
-  if (swipeStart && swipeStart.id === e.pointerId && activeTouches.size === 0) {
-    const dx = e.clientX - swipeStart.x;
-    const dy = e.clientY - swipeStart.y;
-    const dt = performance.now() - swipeStart.t;
-    const dist = Math.hypot(dx, dy);
-    if (dt <= 340 && dist >= 40) {
-      const dir =
-        Math.abs(dx) >= Math.abs(dy)
-          ? dx > 0
-            ? 'right'
-            : 'left'
-          : dy > 0
-            ? 'down'
-            : 'up';
-      handleUserMove(dir);
+  const ev = swipeRecognizer.up(e.pointerId, e.clientX, e.clientY, performance.now(), touchMode);
+  if (ev.type === 'commit') {
+    showSwipeIndicator(ev.startX + ev.dx * 0.65, ev.startY + ev.dy * 0.65, ev.dir, true, 1);
+    handleUserMove(ev.dir);
+  } else if (ev.type === 'tap' && !menuOpen && endgameEl.hidden) {
+    hideSwipeIndicator();
+    // Quick tap on a tree inspects its tier name briefly on touch screens.
+    const cell = inspectAtClientPoint(ev.x, ev.y);
+    clearTapInspect();
+    hoveredCell = cell;
+    board.setHover(cell);
+    updateHoverLabel();
+    if (cell) {
+      tapInspectTimer = setTimeout(() => {
+        tapInspectTimer = 0;
+        hoveredCell = null;
+        board.setHover(null);
+        updateHoverLabel();
+      }, 2200);
     }
+  } else {
+    if (!swipeHideTimer) hideSwipeIndicator();
   }
-  swipeStart = null;
 });
 
 canvas.addEventListener('pointercancel', (e) => {
-  activeTouches.delete(e.pointerId);
-  if (swipeStart && swipeStart.id === e.pointerId) swipeStart = null;
+  if (e.pointerType !== 'touch') return;
+  swipeRecognizer.cancel(e.pointerId);
+  hideSwipeIndicator();
 });
 
-// Pointer hover raycasting for tier-name pill (desktop mouse).
-const raycaster = new THREE.Raycaster();
-const pointerNdc = new THREE.Vector2();
+// Pointer hover raycasting for tier-name pill (desktop mouse unchanged).
 let isDraggingOrbit = false;
 
 canvas.addEventListener('pointerdown', (e) => {
@@ -400,11 +553,7 @@ canvas.addEventListener('pointermove', (e) => {
   if (e.pointerType !== 'mouse' || isDraggingOrbit || menuOpen || !endgameEl.hidden) {
     return;
   }
-  const rect = canvas.getBoundingClientRect();
-  pointerNdc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-  pointerNdc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-  raycaster.setFromCamera(pointerNdc, view.camera);
-  hoveredCell = board.pickCell(raycaster);
+  hoveredCell = inspectAtClientPoint(e.clientX, e.clientY);
   board.setHover(hoveredCell);
   updateHoverLabel();
 });
@@ -416,6 +565,19 @@ canvas.addEventListener('pointerleave', () => {
 });
 
 // Buttons wiring
+btnModeSlide.addEventListener('click', (e) => {
+  e.currentTarget.blur();
+  setTouchMode('slide');
+});
+btnModeOrbit.addEventListener('click', (e) => {
+  e.currentTarget.blur();
+  setTouchMode('orbit');
+});
+btnResetView.addEventListener('click', (e) => {
+  e.currentTarget.blur();
+  view.frameDefault(true);
+});
+
 btnRestart.addEventListener('click', (e) => {
   e.currentTarget.blur();
   startNewGame();
@@ -467,11 +629,12 @@ function frame() {
 
 // ------------------------------------------------------------ Boot & Hook
 
+setTouchMode('slide');
 startNewGame();
 requestAnimationFrame(frame);
 
 // Read-mostly debug hook matching README spec, plus additive helpers for
-// deterministic win/loss/continue verification in Playwright.
+// deterministic win/loss/continue/camera verification in Playwright.
 window.__game = {
   state: () => (game ? game.state : 'ready'),
   start: (seed) => startNewGame(seed),
@@ -482,4 +645,10 @@ window.__game = {
   setGrid: (grid4x4, opts) => loadCustomGrid(grid4x4, opts),
   keepPlaying: () => continueAfterWin(),
   settleAnimations: () => board.finishAnimationNow(),
+  touchMode: () => touchMode,
+  cameraPos: () => ({
+    x: Number(view.camera.position.x.toFixed(3)),
+    y: Number(view.camera.position.y.toFixed(3)),
+    z: Number(view.camera.position.z.toFixed(3)),
+  }),
 };

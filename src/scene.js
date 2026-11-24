@@ -28,6 +28,16 @@ export function createScene(container) {
   controls.maxDistance = 28;
   controls.minPolarAngle = 0.22;
   controls.maxPolarAngle = 1.38;
+  // Touch default ("slide" mode): single finger belongs to 2048 swipes so
+  // OrbitControls never fights tile moves; two fingers smoothly orbit & zoom.
+  // Desktop mouse drag continues to orbit via controls.mouseButtons.LEFT.
+  controls.touches.ONE = null;
+  controls.touches.TWO = THREE.TOUCH.DOLLY_ROTATE;
+
+  function setTouchMode(mode) {
+    controls.touches.ONE = mode === 'orbit' ? THREE.TOUCH.ROTATE : null;
+    controls.touches.TWO = THREE.TOUCH.DOLLY_ROTATE;
+  }
 
   // Warm sunlit botanical lighting: crisp sky + warm meadow bounce + golden sun.
   const hemi = new THREE.HemisphereLight(0xdff2ff, 0x8ca684, 0.86);
@@ -207,6 +217,7 @@ export function createScene(container) {
     controls,
     defaultTarget,
     frameDefault,
+    setTouchMode,
     tick,
     dispose() {
       window.removeEventListener('resize', resize);

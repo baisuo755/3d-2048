@@ -42,15 +42,15 @@ Hovering a tree on desktop shows its tier name in a bottom pill (no numbers on t
 
 ## Controls
 
-| Action | Keyboard | Mouse / Touch | On-screen |
-| --- | --- | --- | --- |
-| Slide trees (camera-relative) | Arrow keys or `W`/`A`/`S`/`D` | Single-finger quick touch swipe | Bottom d-pad |
-| Orbit / zoom camera | — | Drag to orbit, wheel or pinch to zoom | — |
-| Inspect tree tier name | — | Hover any tree on desktop | Bottom pill |
-| Restart | `R` | — | **Restart** button (HUD / Menu) |
-| Menu & How to play | `Esc` | — | **Menu** button |
+| Action | Keyboard | Mouse | Touch | On-screen |
+| --- | --- | --- | --- | --- |
+| Slide trees (camera-relative) | Arrow keys or `W`/`A`/`S`/`D` | — | Single-finger swipe anywhere (in **Slide** mode) | Bottom-left d-pad (tap or hold to repeat) |
+| Orbit / zoom camera | — | Drag to orbit, wheel to zoom | Two-finger drag/pinch anytime, or switch to **Orbit** mode for one-handed drag | **Slide / Orbit** toggle & **Reset view** (touch / mobile) |
+| Inspect tree tier name | — | Hover any tree | Quick tap any tree (in **Slide** mode) | Bottom pill |
+| Restart | `R` | — | — | **Restart** button (HUD / Menu) |
+| Menu & How to play | `Esc` | — | — | **Menu** button |
 
-Moves are camera-relative: **up** always pushes trees away from the camera, snapped to the nearest grid axis.
+Moves are camera-relative: **up** always pushes trees away from the camera, snapped to the nearest grid axis. On touch devices, **Slide** mode is active by default so single-finger swipes never fight the camera (`OrbitControls` ignores single-finger drags in Slide mode and uses two-finger drag/pinch for orbit + zoom; switching to **Orbit** lets you rotate one-handed without moving tiles). Subtle haptic feedback (`navigator.vibrate`) fires on merges when supported and not suppressed by `prefers-reduced-motion`.
 
 ## Game feel & accessibility
 
@@ -67,9 +67,10 @@ Moves are camera-relative: **up** always pushes trees away from the camera, snap
 - `src/trees.js` — procedural low-poly mesh generator for all 11 tiers
 - `src/board.js` — floating island, 16 plot pedestals, tile animation lifecycle, hover raycasting
 - `src/particles.js` — merge leaf bursts and World Tree fireflies
+- `src/touch.js` — pure touch-swipe recognizer and camera-relative direction helpers
 - `src/main.js` — input wiring, localStorage best score, reduced motion, `window.__game` hook
 - `vendor/three/` — vendored Three.js ES module and `OrbitControls`
-- `tests/engine.test.mjs` — Node unit test suite for `src/engine.js`
+- `tests/engine.test.mjs`, `tests/touch.test.mjs` — Node unit test suites for engine rules and touch gesture mapping
 - `scripts/e2e.mjs` — Playwright end-to-end verification and screenshot script
 
 ## Tests & debug hook
