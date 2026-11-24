@@ -45,10 +45,17 @@ export function createScene(container) {
   const hemi = new THREE.HemisphereLight(0xe4f4ff, 0x90ab82, 0.88);
   scene.add(hemi);
 
+  const isCompactDevice =
+    (typeof window !== 'undefined' && window.innerWidth <= 680) ||
+    (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0 && window.innerWidth <= 900);
+
   const sun = new THREE.DirectionalLight(0xfff0cc, 2.55);
   sun.position.set(9.5, 14.5, 6.2);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
+  // 1024x1024 shadows on phones keep fill cost low without visible loss on small screens;
+  // desktop keeps full 2048x2048 crisp shadows.
+  const shadowSize = isCompactDevice ? 1024 : 2048;
+  sun.shadow.mapSize.set(shadowSize, shadowSize);
   const shadowSpan = 8.4;
   sun.shadow.camera.left = -shadowSpan;
   sun.shadow.camera.right = shadowSpan;
@@ -213,7 +220,8 @@ export function createScene(container) {
     const w = Math.max(container.clientWidth, 1);
     const h = Math.max(container.clientHeight, 1);
     const newAspect = w / h;
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    const dprCap = w <= 680 ? 1.75 : 2;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, dprCap));
     renderer.setSize(w, h);
     camera.aspect = newAspect;
     camera.updateProjectionMatrix();

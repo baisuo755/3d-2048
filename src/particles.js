@@ -29,6 +29,7 @@ export function createParticles(scene) {
   let worldTreeAnchors = [];
   let waterfallOrigin = null;
   let reducedMotion = false;
+  let compactMode = false;
 
   const fireflyMat = new THREE.MeshBasicMaterial({
     color: 0xffd24a,
@@ -52,10 +53,11 @@ export function createParticles(scene) {
     for (const p of pollenMotes) ambientGroup.remove(p.mesh);
     pollenMotes.length = 0;
     if (reducedMotion) return;
-    for (let i = 0; i < 16; i++) {
+    const count = compactMode ? 10 : 16;
+    for (let i = 0; i < count; i++) {
       const mesh = new THREE.Mesh(POLLEN_GEO, pollenMat);
       ambientGroup.add(mesh);
-      const angle = (i / 16) * Math.PI * 2 + Math.random() * 0.5;
+      const angle = (i / count) * Math.PI * 2 + Math.random() * 0.5;
       const rad = 1.0 + Math.random() * 3.6;
       pollenMotes.push({
         mesh,
@@ -105,7 +107,7 @@ export function createParticles(scene) {
 
     if (reducedMotion || worldTreeAnchors.length === 0) return;
 
-    const perTree = 16;
+    const perTree = compactMode ? 11 : 16;
     for (const anchor of worldTreeAnchors) {
       for (let i = 0; i < perTree; i++) {
         const mesh = new THREE.Mesh(FIREFLY_GEO, i % 4 === 0 ? fireflyMintMat : fireflyMat);
@@ -156,12 +158,21 @@ export function createParticles(scene) {
     rings.push({ mesh, age: 0, life, startScale: 0.55, maxScale });
   }
 
+  function setCompactMode(flag) {
+    const next = Boolean(flag);
+    if (next === compactMode) return;
+    compactMode = next;
+    initPollen();
+    rebuildAmbientFireflies();
+  }
+
   function spawnLeafBurst(x, y, z, colorHex = 0x6ac94a, count = 16, sparkle = false) {
     if (reducedMotion) return;
+    const scaledCount = compactMode ? Math.max(8, Math.round(count * 0.65)) : count;
     const baseCol = new THREE.Color(colorHex);
     const lightCol = baseCol.clone().offsetHSL(0.02, 0.05, 0.14);
 
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < scaledCount; i++) {
       const isSparkle = sparkle && i % 4 === 0;
       const mat = new THREE.MeshStandardMaterial({
         color: isSparkle ? 0xffe478 : i % 2 === 0 ? baseCol : lightCol,
@@ -181,7 +192,7 @@ export function createParticles(scene) {
       mesh.position.set(x, y, z);
       leafGroup.add(mesh);
 
-      const angle = (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.45;
+      const angle = (i / scaledCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.45;
       const speed = 1.15 + Math.random() * 1.65;
       leaves.push({
         mesh,
@@ -202,7 +213,7 @@ export function createParticles(scene) {
     // Dramatic golden shockwave ring expanding across the sanctuary.
     spawnMergeRing(x, 0.16, z, 0xffd75e, 9.5, 0.95);
 
-    const count = 48;
+    const count = compactMode ? 32 : 48;
     for (let i = 0; i < count; i++) {
       const mesh = new THREE.Mesh(FIREFLY_GEO, i % 4 === 0 ? fireflyMintMat : fireflyMat);
       const angle = (i / count) * Math.PI * 2 + Math.random() * 0.3;
@@ -369,6 +380,7 @@ export function createParticles(scene) {
     setWorldTreePositions,
     setWaterfallOrigin,
     setReducedMotion,
+    setCompactMode,
     clear,
     tick,
     dispose,

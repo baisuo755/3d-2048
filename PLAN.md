@@ -1,29 +1,17 @@
 # PLAN — 3D 2048 (Grove)
 
-Set up by Commander on 2026-11-24 (KL time). Routing per Baisuo's instruction the same day: build rounds go to Antigravity Pilot.
+Project history and build record for **Grove** (3D 2048), live at https://baisuo755.github.io/3d-2048/.
 
-## Layout
+## History
 
-- Main repo: `/Users/AIDev/Projects/3D 2048` — branch `main`, planning docs only, no remote yet.
-- Worktree area: `/Users/AIDev/Projects/3D 2048-wt` — one worktree per round, branch named after the round (Notion Learning Graph pattern).
+- **Round 1 (`antigravity-r1` @ `41c2aa4`)**: Full initial build — pure-JS 2048 engine (`src/engine.js`) with 11 unit tests, vendored Three.js scene, floating grass island, 11 procedural low-poly trees (Seed 2 → World Tree 2048), camera-relative controls, HUD/Menu/Win/Loss panels, `?seed=N` determinism, `window.__game` hook, and Playwright e2e + 1440/390 screenshots.
+- **Round 1.5 (`antigravity-r1` @ `d4917cc`)**: Visual review & polish pass — shifted sky to sunlit cerulean so the golden World Tree and fireflies pop cleanly, improved mid-tier separation across Mature (32) / Great (64) / Grand (128), fixed cloud placement & island underside fill lighting, and tightened 390px island framing.
+- **Round 2 (`antigravity-r2` @ `c989735`)**: Mobile UX & manipulation redesign — eliminated 1-finger swipe vs orbit conflict (`OrbitControls.touches.ONE = null`, `TWO = DOLLY_ROTATE` in Slide mode), added pure swipe recognizer (`src/touch.js`, +7 unit tests) with live swipe reticle, bottom thumb dock (`Slide`/`Orbit` toggle, `Reset view`, 48×48 hold-to-repeat d-pad), >=44px hit targets, one-handed lower-screen sheets, optional merge haptics, and `hasTouch` Playwright e2e coverage.
+- **Round 3 (`antigravity-r3` @ `a091bde`)**: Visuals + game feel pass ("Sunlit Sky-Sanctuary Diorama") — carved sandstone terrace with glowing corner lanterns, tapered misty waterfall, hanging cliff vines, two-altitude clouds & meadow pollen, rotating World Tree halo & ground rune-aura, kinetic slide lean, squash-and-stretch merge pop, bloom rings, blocked-move micro-bump, non-drifting camera impulse, HUD `+N` score deltas, and World Tree win reveal beat.
+- **Round 4 (`antigravity-r4`)**: Final holistic polish & docs — fixed tree-first raycasting so tapping/hovering tall tree canopies always inspects the right tree, added cheap mobile performance guards (1024px shadows, 1.75 DPR cap, compact particle budget, background-tab pause), and refreshed `README.md` and `PLAN.md` to match the shipped game.
 
-## Round 1 — full build (Antigravity Pilot)
+## Invariants preserved across all rounds
 
-- Branch: `antigravity-r1` (from `main`) · Worktree: `/Users/AIDev/Projects/3D 2048-wt/antigravity-r1`
-- Goal: the whole game per README.md — pure-JS engine, 3D island scene, 11 procedural tree models, camera-relative controls, HUD, win/lose flow, tests, README rewritten to actual state.
-- Definition of done:
-  1. `node --test tests/` passes — engine: legal moves, slide + merge, once-per-move, no-change move ≠ turn, 90/10 spawn mix + seeded determinism, scoring, win at 2048, loss, continue-after-win.
-  2. Playwright e2e through `window.__game`: a scripted game proving merge + score, a forced win reaching the World Tree, a forced loss, spawn determinism under `?seed=N`.
-  3. Screenshots at 1440 and 390 widths; zero console errors on load and during the scripted game.
-  4. README rewritten to describe what actually runs (controls, tiers, tests, hook); the "Status: planning" line removed.
-- Not allowed: push, merge into `main` or any branch, deploy, destructive git (reset --hard, force push, clean -fd, branch -D), edits outside the worktree, automations, secrets.
-- Report: STANDARD DONE BLOCK — Tests (command + real result) / Console errors / Screenshots (paths) / Unverified / Branch and commits.
-
-## After round 1 (Commander)
-
-- Verify the claim on the Mac: `git status`/`log`, run the test command myself, open the screenshots.
-- Optional round 2 on Baisuo's word: review/polish pass (Grok or Codex) in its own worktree.
-
-## Out of scope for round 1
-
-3D cube grid, extra themes (animals/city), sound, any deploy/hosting.
+- Plain HTML/CSS/JS ES modules with vendored Three.js (zero npm dependencies, zero build step).
+- `src/engine.js` exact 2048 rules remained untouched from Round 1 onward; all 18 Node unit tests and Playwright desktop + `hasTouch` e2e checks stay green with 0 console errors.
+- `prefers-reduced-motion` and `window.__game` remain intact.

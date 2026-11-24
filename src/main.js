@@ -60,6 +60,12 @@ const view = createScene(document.body);
 const particles = createParticles(view.scene);
 const board = createBoard(view.scene, particles);
 
+function syncCompactParticles() {
+  particles.setCompactMode(window.innerWidth <= 680);
+}
+syncCompactParticles();
+window.addEventListener('resize', syncCompactParticles);
+
 // ------------------------------------------------------------ Reduced motion
 
 const motionMq = matchMedia('(prefers-reduced-motion: reduce)');
@@ -596,7 +602,8 @@ canvas.addEventListener('pointermove', (e) => {
   updateHoverLabel();
 });
 
-canvas.addEventListener('pointerleave', () => {
+canvas.addEventListener('pointerleave', (e) => {
+  if (e.pointerType !== 'mouse') return;
   hoveredCell = null;
   board.setHover(null);
   updateHoverLabel();
@@ -642,8 +649,13 @@ menuEl.addEventListener('click', (e) => {
 
 const clock = new THREE.Clock();
 const targetGoal = new THREE.Vector3();
+let rafId = 0;
 
 function frame() {
+  if (document.hidden) {
+    rafId = 0;
+    return;
+  }
   const dt = Math.min(clock.getDelta(), 0.05);
   const elapsed = clock.elapsedTime;
 
@@ -672,14 +684,22 @@ function frame() {
     camKick.set(0, 0, 0);
     view.renderer.render(view.scene, view.camera);
   }
-  requestAnimationFrame(frame);
+  rafId = requestAnimationFrame(frame);
 }
+
+// Pause rendering while tab is backgrounded so mobile battery is never burned idle.
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && !rafId) {
+    clock.getDelta();
+    rafId = requestAnimationFrame(frame);
+  }
+});
 
 // ------------------------------------------------------------ Boot & Hook
 
 setTouchMode('slide');
 startNewGame();
-requestAnimationFrame(frame);
+rafId = requestAnimationFrame(frame);
 
 // Read-mostly debug hook matching README spec, plus additive helpers for
 // deterministic win/loss/continue/camera verification in Playwright.

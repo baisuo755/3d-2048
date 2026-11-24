@@ -526,6 +526,19 @@ try {
   const shotMobile390 = path.join(SHOT_DIR, 'mobile-390.png');
   await mPage.screenshot({ path: shotMobile390 });
 
+  // 6f2. Verify quick tap on a 3D tree canopy inspects its tier name in #hover-pill
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 185, y: 345, id: 6 }] });
+  await new Promise((r) => setTimeout(r, 40));
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await mPage.waitForTimeout(80);
+  const inspected = await mPage.evaluate(() => ({
+    hidden: document.getElementById('hover-pill').hidden,
+    name: document.getElementById('hover-name').textContent,
+  }));
+  assert.equal(inspected.hidden, false, 'Quick tap on tree canopy should reveal tier-name pill');
+  assert.ok(inspected.name && inspected.name.length > 0, 'Tier-name pill must show non-empty tree name');
+  console.log(`PASS: mobile tap-to-inspect tree canopy (${inspected.name})`);
+
   // 6g. Capture mid-interaction screenshot showing live directional swipe indicator on 390x844!
   await cdp.send('Input.dispatchTouchEvent', {
     type: 'touchStart',

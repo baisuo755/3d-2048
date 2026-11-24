@@ -424,6 +424,7 @@ export function createBoard(scene, particles) {
 
   function placeTileMesh(id, value, r, c) {
     const mesh = createTreeMesh(value);
+    mesh.userData.tileId = id;
     const { x, z } = cellToWorld(r, c);
     mesh.position.set(x, PLOT_TOP_Y, z);
     treesGroup.add(mesh);
@@ -565,6 +566,19 @@ export function createBoard(scene, particles) {
   }
 
   function pickCell(raycaster) {
+    // Prefer direct hits on 3D tree canopies/trunks so hovering or tapping tall
+    // trees always inspects the tree under the finger/cursor rather than the plot behind it.
+    const treeHits = raycaster.intersectObjects(treesGroup.children, true);
+    for (const hit of treeHits) {
+      let obj = hit.object;
+      while (obj && obj.parent && obj.parent !== treesGroup) {
+        obj = obj.parent;
+      }
+      if (obj && obj.userData && obj.userData.tileId !== undefined) {
+        const entry = activeTiles.get(obj.userData.tileId);
+        if (entry) return { r: entry.r, c: entry.c };
+      }
+    }
     const hits = raycaster.intersectObjects(plotPickables, false);
     if (hits.length === 0) return null;
     return hits[0].object.userData.cell || null;
